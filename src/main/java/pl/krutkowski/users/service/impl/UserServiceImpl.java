@@ -23,6 +23,7 @@ import pl.krutkowski.users.service.UserService;
 import java.util.Date;
 import java.util.List;
 
+import static pl.krutkowski.users.constant.UserConstant.*;
 import static pl.krutkowski.users.enumeration.Role.ROLE_USER;
 
 @Slf4j
@@ -39,8 +40,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findUserByUsername(username);
         if (user == null) {
-            log.error("USERNAME NOT FOUND BY USERNAME: {}", username);
-            throw new UsernameNotFoundException("USERNAME NOT FOUND BY USERNAME: " + username);
+            String msg = String.format(USER_NOT_FOUND_BY_USERNAME, username);
+            log.error(msg);
+            throw new UsernameNotFoundException(msg);
         }
         user.setLastLoginDateDisplay(user.getLastLoginDate());
         user.setLastLoginDate(new Date());
@@ -74,7 +76,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     private String getTemporaryImageUrl() {
-        return ServletUriComponentsBuilder.fromCurrentContextPath().path("/user/image/profile/tmp").toUriString();
+        return ServletUriComponentsBuilder.fromCurrentContextPath().path(DEFAULT_IMAGE_PATH).toUriString();
     }
 
     private String encodePassword(String password) {
@@ -91,39 +93,52 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     public List<User> getUsers() {
-        return List.of();
+        return userRepository.findAll();
     }
 
     @Override
     public User findUserUsername(String username) {
-        return null;
+        return userRepository.findUserByUsername(username);
     }
 
     @Override
     public User findUserByEmail(String email) {
-        return null;
+        return userRepository.findUserByEmail(email);
     }
 
-    public User validateUsernameAndEmail(String currentUsername, String newUsername, String newEmail) throws UsernameExistException, UserNotFoundException, EmailExistException {
+    public void validateUsernameAndEmail(String currentUsername, String newUsername, String newEmail) throws UsernameExistException, UserNotFoundException, EmailExistException {
+        String msg;
+        User userNewByUsername = findUserUsername(newUsername);
+        User userNewByEmail = findUserByEmail(newEmail);
+
         if(!StringUtils.isBlank(currentUsername)) {
             User currentUser = findUserUsername(currentUsername);
-            if(currentUser == null)
-                throw new UserNotFoundException("USERNAME NOT FOUND BY USERNAME: " + currentUsername);
-            User userNewByUsername = findUserUsername(newUsername);
-            if(userNewByUsername != null && !currentUser.getId().equals(userNewByUsername.getId()))
-                throw new UsernameExistException(String.format("USERNAME: %s ALREADY TAKEN", newUsername));
-            User userNewByEmail = findUserByEmail(newEmail);
-            if(userNewByEmail != null && !currentUser.getId().equals(userNewByEmail.getId()))
-                throw new EmailExistException(String.format("EMAIL %s ALREADY TAKEN", newEmail));
-            return currentUser;
+            if(currentUser == null){
+                msg = String.format(USER_NOT_FOUND_BY_USERNAME, currentUsername);
+                log.error(msg);
+                throw new UserNotFoundException(msg);
+            }
+            if(userNewByUsername != null && !currentUser.getId().equals(userNewByUsername.getId())) {
+                msg = String.format(USERNAME_ALREADY_TAKEN, newUsername);
+                log.error(msg);
+                throw new UsernameExistException(msg);
+            }
+            if(userNewByEmail != null && !currentUser.getId().equals(userNewByEmail.getId())){
+                msg = String.format(EMAIL_ALREADY_TAKEN, newEmail);
+                log.error(msg);
+                throw new EmailExistException(String.format(EMAIL_ALREADY_TAKEN, newEmail));
+            }
         } else {
-            User userByUsername = findUserUsername(newUsername);
-            if(userByUsername != null)
-                throw new UsernameExistException(String.format("USERNAME: %s ALREADY TAKEN", newUsername));
-            User userByEmail = findUserByEmail(newEmail);
-            if(userByEmail != null)
-                throw new EmailExistException(String.format("EMAIL %s ALREADY TAKEN", newEmail));
-            return null;
+            if(userNewByUsername != null)   {
+                 msg = String.format(USERNAME_ALREADY_TAKEN, newUsername);
+                 log.error(msg);
+                 throw new UsernameExistException(msg);
+            }
+            if(userNewByEmail != null) {
+                msg = String.format(EMAIL_ALREADY_TAKEN, newEmail);
+                log.error(msg);
+                throw new EmailExistException(msg);
+            }
         }
     }
 }
