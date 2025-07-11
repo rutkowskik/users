@@ -1,0 +1,21 @@
+jwt:
+  secret: 3ZpZuH8yU4vwf9bfbY+lF8gG9Kyj37xftmZEGzVuBBk=
+
+server:
+  port: 8081
+
+spring:
+  application:
+    name: users
+  datasource:
+    username: 'users_app'
+    url: jdbc:postgresql://localhost:5432/users
+    password: 'password1'
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: 'true'
+    hibernate:
+      ddl-auto: update
+    show-sql: 'true'
