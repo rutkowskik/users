@@ -4,8 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.*;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -53,7 +52,14 @@ public class SecurityConfiguration {
     public AuthenticationManager authenticationManager(@Qualifier("UserDetailService") UserDetailsService userDetailsService) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(getBCryptPasswordEncoder());
-        return new ProviderManager(provider);
+        ProviderManager providerManager = new ProviderManager(provider);
+        providerManager.setAuthenticationEventPublisher(getDefaultAuthenticationEventPublisher());
+        return providerManager;
+    }
+
+    @Bean
+    public DefaultAuthenticationEventPublisher getDefaultAuthenticationEventPublisher() {
+        return new DefaultAuthenticationEventPublisher();
     }
 
     @Bean

@@ -18,6 +18,7 @@ import pl.krutkowski.users.exception.domain.EmailExistException;
 import pl.krutkowski.users.exception.domain.UserNotFoundException;
 import pl.krutkowski.users.exception.domain.UsernameExistException;
 import pl.krutkowski.users.repository.UserRepository;
+import pl.krutkowski.users.service.LoginAttemptService;
 import pl.krutkowski.users.service.UserService;
 
 import java.util.Date;
@@ -35,6 +36,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttemptService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -44,6 +46,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             log.error(msg);
             throw new UsernameNotFoundException(msg);
         }
+        validateLoginAttempt(user);
         user.setLastLoginDateDisplay(user.getLastLoginDate());
         user.setLastLoginDate(new Date());
         userRepository.save(user);
@@ -139,6 +142,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 log.error(msg);
                 throw new EmailExistException(msg);
             }
+        }
+    }
+
+    private void validateLoginAttempt(User user) {
+        if(user.isNotLocked()){
+            user.setNotLocked(!loginAttemptService.hasExceededMaxAttempt(user.getUsername()));
+        } else {
+            loginAttemptService.evictUserFromCache(user.getUsername());
         }
     }
 }
