@@ -18,6 +18,8 @@ import pl.krutkowski.users.exception.domain.UsernameExistException;
 import pl.krutkowski.users.service.UserService;
 import pl.krutkowski.users.utility.JTWTokenProvider;
 
+import javax.mail.MessagingException;
+
 import static org.springframework.http.HttpStatus.OK;
 import static pl.krutkowski.users.constant.SecurityConstant.JWT_TOKEN_HEADER;
 
@@ -40,7 +42,7 @@ public class UserController extends ExceptionHandling {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestBody User user ) throws UserNotFoundException, EmailExistException, UsernameExistException {
+    public ResponseEntity<User> registerUser(@RequestBody User user ) throws UserNotFoundException, EmailExistException, UsernameExistException, MessagingException {
         User registerUser = userService.registerUser(user.getFirstName(), user.getLastName(), user.getUsername(), user.getEmail());
         return new ResponseEntity<>(registerUser,OK);
     }

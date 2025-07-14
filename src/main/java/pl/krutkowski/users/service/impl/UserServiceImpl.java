@@ -18,9 +18,11 @@ import pl.krutkowski.users.exception.domain.EmailExistException;
 import pl.krutkowski.users.exception.domain.UserNotFoundException;
 import pl.krutkowski.users.exception.domain.UsernameExistException;
 import pl.krutkowski.users.repository.UserRepository;
+import pl.krutkowski.users.service.EmailService;
 import pl.krutkowski.users.service.LoginAttemptService;
 import pl.krutkowski.users.service.UserService;
 
+import javax.mail.MessagingException;
 import java.util.Date;
 import java.util.List;
 
@@ -37,6 +39,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
+    private final EmailService emailService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -56,7 +59,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User registerUser(String firstName, String lastName, String username, String email) throws UserNotFoundException, EmailExistException, UsernameExistException {
+    public User registerUser(String firstName, String lastName, String username, String email) throws UserNotFoundException, EmailExistException, UsernameExistException, MessagingException {
         validateUsernameAndEmail(StringUtils.EMPTY, username, email);
         User user = new User();
         user.setUserId(generateUserId());
@@ -74,7 +77,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         user.setAuthorities(ROLE_USER.getAuthorities());
         user.setProfileImageUrl(getTemporaryImageUrl());
         userRepository.save(user);
-        log.info("New user password: {}", password);
+        emailService.sendNewPasswordEmail(firstName, email, password);
+//        log.info("New user password: {}", password);
         return user;
     }
 
