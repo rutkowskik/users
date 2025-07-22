@@ -31,13 +31,13 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
             response.setStatus(HttpServletResponse.SC_OK);
         else {
             String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-            if(authHeader == null || authHeader.startsWith(TOKEN_PREFIX)) {
+            if(authHeader == null || !authHeader.startsWith(TOKEN_PREFIX)) {
                 filterChain.doFilter(request, response);
                 return;
             }
             String token = authHeader.substring(TOKEN_PREFIX.length());
             String username = jtwTokenProvider.getSubject(token);
-            if(jtwTokenProvider.isTokenValid(token, username) && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if(jtwTokenProvider.isTokenValid(username, token) && SecurityContextHolder.getContext().getAuthentication() == null) {
                 List<GrantedAuthority> authorities = jtwTokenProvider.getAuthorities(token);
                 Authentication authentication = jtwTokenProvider.getAuthentication(username, authorities, request);
                 SecurityContextHolder.getContext().setAuthentication(authentication);

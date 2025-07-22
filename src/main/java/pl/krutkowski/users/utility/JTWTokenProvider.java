@@ -52,12 +52,12 @@ public class JTWTokenProvider {
 
     public boolean isTokenValid(String userName, String token) {
         JWTVerifier verifier = getJWTVerier();
-        return StringUtils.isEmpty(userName) && !isTokenExpired(verifier, token);
+        return StringUtils.isNotEmpty(userName) && !isTokenExpired(verifier, token);
     }
 
     private boolean isTokenExpired(JWTVerifier verifier, String token) {
         Date expiresAt = verifier.verify(token).getExpiresAt();
-        return expiresAt.after(new Date());
+        return expiresAt.before(new Date());
     }
 
     public String getSubject(String token) {
