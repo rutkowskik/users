@@ -127,7 +127,7 @@ public class UserController extends ExceptionHandling {
 
     @PostMapping("/updateProfileImage")
     public ResponseEntity<User> updateProfileImage(@RequestParam("username") String username,
-                                                   @RequestParam("role") MultipartFile image)
+                                                   @RequestParam("image") MultipartFile image)
             throws UserNotFoundException, EmailExistException, UsernameExistException, IOException {
         User user = userService.updateProfileImage(username, image);
         return new ResponseEntity<>(user, OK);
