@@ -58,6 +58,7 @@
             text-align: center;
             color: #FFFFFF;
             z-index: 1;
+
         }
         .hero-content h1 {
             font-size: 4rem;
@@ -91,6 +92,9 @@
         .services .card {
             background-color: #111111;
             border: none;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         .services .card-text {
             color: #e0e0e0;
@@ -99,6 +103,22 @@
         .services .card {
             background-color: #111111;
             border: 1px solid rgba(255,255,255,0.08);
+        }
+        .services .card-img-top {
+            width: 100%;
+            height: auto;  /* utrzymuje oryginalny stosunek boków */
+            display: block;
+        }
+        .services .card-body {
+            flex-grow: 1;
+        }
+        .card-text {
+            color: #e6e6e6 !important;  /* jasny szary tekst */
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.6); /* subtelny cień dla kontrastu */
+        }
+
+        .card-title {
+            color: #f0f8ff !important; /* bardzo jasny tytuł */
         }
         .projects .card {
             background-color: transparent;
@@ -118,6 +138,20 @@
         .process-step h4 {
             margin-top: 1rem;
             font-weight: 500;
+        }
+        #why-us h2 {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        #why-us .card {
+            transition: transform .3s, box-shadow .3s;
+        }
+        #why-us .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 175, 255, 0.2);
         }
         .footer {
             background-color: #000;
@@ -146,6 +180,7 @@
             <ul class="navbar-nav">
                 <li class="nav-item"><a class="nav-link" href="#services">Usługi</a></li>
                 <li class="nav-item"><a class="nav-link" href="#projects">Realizacje</a></li>
+                <li class="nav-item"><a class="nav-link" href="#why-us">Dlaczego my</a></li>
                 <li class="nav-item"><a class="nav-link" href="#process">Proces</a></li>
                 <li class="nav-item"><a class="nav-link" href="#contact">Kontakt</a></li>
             </ul>
@@ -167,7 +202,7 @@
     <div class="container text-center">
         <h2>Co oferujemy</h2>
         <div class="row mt-5 g-4">
-            <div class="col-md-4">
+            <div class="col-md-4 h-100">
                 <div class="card p-4">
                     <img src="img/inspection.jpg" class="card-img-top" alt="Inspekcje">
                     <div class="card-body">
@@ -177,7 +212,7 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card p-4">
+                <div class="card p-4 h-100">
                     <img src="img/monitoring.jpg" class="card-img-top" alt="Monitoring AI">
                     <div class="card-body">
                         <h5 class="card-title">Monitoring & AI</h5>
@@ -186,7 +221,7 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card p-4">
+                <div class="card p-4 h-100">
                     <img src="img/fpv.jpg" class="card-img-top" alt="Show Drony">
                     <div class="card-body">
                         <h5 class="card-title">Show & FPV</h5>
@@ -205,7 +240,7 @@
         <div class="row mt-5 g-4">
             <div class="col-md-6">
                 <div class="card border-0">
-                    <img src="https://source.unsplash.com/800x500/?drone,testing" class="card-img-top" alt="Projekt testowy 1">
+                    <img src="img/waypoint.jpg" class="card-img-top" alt="Projekt testowy 1">
                     <div class="card-body">
                         <h5 class="card-title">Testy lotu autonomicznego</h5>
                         <p class="card-text">Prototyp autonomicznego drona z zaawansowanymi sensorami – testy w terenie.</p>
@@ -214,10 +249,59 @@
             </div>
             <div class="col-md-6">
                 <div class="card border-0">
-                    <img src="https://source.unsplash.com/800x500/?drone,show" class="card-img-top" alt="Projekt show 2">
+                    <img src="img/termo.jpg" class="card-img-top" alt="Projekt show 2">
                     <div class="card-body">
-                        <h5 class="card-title">Pokaz świetlny dronów</h5>
-                        <p class="card-text">Choreografia i synchronizacja 50+ dronów – innowacja i technologia.</p>
+                        <h5 class="card-title">Termowizja</h5>
+                        <p class="card-text">Dron wyposażony w kamerę termowizyjną, przystosowany do pracy w warunkach nocnych.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Why Us Section -->
+<section id="why-us" class="bg-black text-light">
+    <div class="container text-center">
+        <h2 class="mb-5">Dlaczego <span>RuKa Drone</span>?</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 bg-dark border-0 p-4 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary mb-3">Ekspresowe tempo</h5>
+                        <p class="card-text">
+                            Od pierwszej rozmowy do latającego lub jeżdżącego prototypu — w rekordowym czasie.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 bg-dark border-0 p-4 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary mb-3">Indywidualny design</h5>
+                        <p class="card-text">
+                            Modele 3D, obliczenia FEM i elementy z włókna węglowego cięte laserowo — dopasowane tylko do Twoich wymagań.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 bg-dark border-0 p-4 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary mb-3">Transparentny proces</h5>
+                        <p class="card-text">
+                            Jasne kamienie milowe, przejrzysty budżet i pełne przeniesienie własności projektu.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 bg-dark border-0 p-4 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary mb-3">Wsparcie po wdrożeniu</h5>
+                        <p class="card-text">
+                            Szkolenie operatorów i kompletna dokumentacja — możesz dalej rozwijać platformę samodzielnie.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -226,7 +310,7 @@
 </section>
 
 <!-- Process Section -->
-<section id="process">
+<section id="process" class="projects bg-dark">
     <div class="container text-center">
         <h2>Proces realizacji</h2>
         <div class="row mt-5 g-4">
@@ -251,7 +335,7 @@
 </section>
 
 <!-- Contact Section -->
-<section id="contact" class="bg-dark">
+<section id="contact">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-6 text-center mb-4">
@@ -259,20 +343,20 @@
                 <p>Napisz do nas, opowiedz o swoim projekcie — pomożemy zrealizować go szybciej niż myślisz.</p>
             </div>
             <div class="col-md-6">
-                <form>
+                <form action="https://formspree.io/f/mldwqgyk" method="POST">
                     <div class="mb-3">
                         <label for="name" class="form-label">Imię i nazwisko</label>
-                        <input type="text" class="form-control bg-dark text-white border-secondary" id="name" placeholder="Twoje imię">
+                        <input type="text" name="name" id="name" class="form-control bg-dark text-white border-secondary">
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control bg-dark text-white border-secondary" id="email" placeholder="twój@email.com">
+                        <input type="email" name="_replyto" id="email" class="form-control bg-dark text-white border-secondary">
                     </div>
                     <div class="mb-3">
-                        <label for="message" class="form-label">Krótki opis projektu</label>
-                        <textarea class="form-control bg-dark text-white border-secondary" id="message" rows="4"></textarea>
+                        <label for="message" class="form-label">Wiadomość</label>
+                        <textarea name="message" id="message" class="form-control bg-dark text-white border-secondary" rows="4"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Wyślij wiadomość</button>
+                    <button type="submit" class="btn btn-primary">Wyślij</button>
                 </form>
             </div>
         </div>
@@ -283,7 +367,6 @@
 <footer class="footer text-center">
     <div class="container">
         <p>&copy; 2025 RuKa Drone — Wszystkie prawa zastrzeżone.</p>
-        <p><a href="#">Polityka prywatności</a> • <a href="#">Regulamin</a></p>
     </div>
 </footer>
 
