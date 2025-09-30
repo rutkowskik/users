@@ -1,13 +1,15 @@
 package pl.krutkowski.users.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pl.krutkowski.users.domain.HttpResponse;
@@ -16,13 +18,12 @@ import pl.krutkowski.users.domain.UserPrinciple;
 import pl.krutkowski.users.exception.ExceptionHandling;
 import pl.krutkowski.users.exception.domain.*;
 import pl.krutkowski.users.service.UserService;
-import pl.krutkowski.users.utility.JTWTokenProvider;
+import pl.krutkowski.users.token.TokenService;
 
 import javax.mail.MessagingException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -32,7 +33,6 @@ import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.MediaType.IMAGE_JPEG_VALUE;
 import static pl.krutkowski.users.constant.FileConstant.*;
-import static pl.krutkowski.users.constant.SecurityConstant.JWT_TOKEN_HEADER;
 import static pl.krutkowski.users.constant.UserConstant.USER_NOT_FOUND_BY_USERNAME;
 
 @Slf4j
@@ -45,16 +45,29 @@ public class UserController extends ExceptionHandling {
     public static final String EMAIL_SENT_WITH_NEW_PASSWORD = "Email with new password sent to: ";
     public static final String USER_DELETED_SUCCESSFULLY = "User deleted successfully";
     private final UserService userService;
-    private final JTWTokenProvider jtwTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final TokenService tokenService;
 
     @PostMapping("/login")
-    public ResponseEntity<User> loginUser(@RequestBody User user ) {
+    public ResponseEntity<User> loginUser(@RequestBody User user, HttpServletRequest request, HttpServletResponse response) {
         authenticateUser(user.getUsername(), user.getPassword());
         User loginUser = userService.findUserUsername(user.getUsername());
         UserPrinciple userPrinciple = new UserPrinciple(loginUser);
-        HttpHeaders headers = getJtwHeaders(userPrinciple);
-        return new ResponseEntity<>(loginUser, headers,OK);
+        tokenService.login(userPrinciple, response);
+        return new ResponseEntity<>(loginUser,OK);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<User> getCurrentUser() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String username = authentication.getName();
+        User user = userService.findUserUsername(username);
+
+        return ResponseEntity.ok(user);
     }
 
     @PostMapping("/register")
@@ -156,12 +169,6 @@ public class UserController extends ExceptionHandling {
         return new ResponseEntity<>(
                 new HttpResponse(httpStatus.value(), httpStatus, httpStatus.getReasonPhrase().toUpperCase(),
                         message.toUpperCase()), httpStatus);
-    }
-
-    private HttpHeaders getJtwHeaders(UserPrinciple user) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(JWT_TOKEN_HEADER, jtwTokenProvider.generateToken(user));
-        return headers;
     }
 
     private void authenticateUser(String username, String password) {
