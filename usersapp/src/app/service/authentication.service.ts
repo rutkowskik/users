@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import {HttpClient, HttpErrorResponse, HttpResponse} from '@angular/common/http';
 import {environment} from "../../environments/environment";
-import {Observable} from "rxjs";
+import {catchError, map, Observable, of} from "rxjs";
 import { User } from '../model/user';
 import { JwtHelperService } from "@auth0/angular-jwt";
 
@@ -11,14 +11,12 @@ import { JwtHelperService } from "@auth0/angular-jwt";
 export class AuthenticationService {
 
   public host = environment.apiUrl;
-  private token: any;
   private loggedInUsername: any;
-  private jtwHelper = new JwtHelperService();
 
   constructor(private http: HttpClient) { }
 
   public login(user: User): Observable<HttpResponse<User>> {
-    return this.http.post<User>(`${this.host}/user/login`, user, {observe: 'response'});
+    return this.http.post<User>(`${this.host}/user/login`, user, {observe: 'response', withCredentials: true});
   }
 
   public register(user: User): Observable<User> {
@@ -26,20 +24,10 @@ export class AuthenticationService {
   }
 
   public logOut(): void {
-    this.token = null;
     this.loggedInUsername = null;
     if (typeof window !== 'undefined' && localStorage){
       localStorage.removeItem('user');
-      localStorage.removeItem('token');
       localStorage.removeItem('users');
-    }
-
-  }
-
-  public saveToken(token: string): void {
-    this.token = token;
-    if(typeof window !== 'undefined' && localStorage){
-      localStorage.setItem('token', token);
     }
 
   }
@@ -58,27 +46,21 @@ export class AuthenticationService {
     return new User();
   }
 
-  public loadToken(): void {
-    if(typeof window !== 'undefined' && localStorage){
-      this.token = localStorage.getItem('token');
-    }
+  public isLoggedIn(): Observable<boolean> {
+    return this.http.get<User>(`${this.host}/user/me`, { withCredentials: true })
+      .pipe(
+        map((user: User) => {
+          if (user) {
+            this.addUserToLocalCache(user);
+            return true;
+          }
+          return false;
+        }),
+        catchError(() => {
+          this.logOut();
+          return of(false);
+        })
+      );
   }
 
-  public getToken(): string {
-    return this.token;
-  }
-
-  public isLoggedIn(): boolean {
-    this.loadToken();
-    if(this.token != null && this.token !== '') {
-      if(this.jtwHelper.decodeToken(this.token).sub != null || '') {
-        if(!this.jtwHelper.isTokenExpired(this.token)) {
-          this.loggedInUsername = this.jtwHelper.decodeToken(this.token).sub;
-          return true;
-        }
-      }
-    }
-    this.logOut();
-    return false;
-  }
 }
