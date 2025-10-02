@@ -23,17 +23,15 @@ export class AuthInterceptor implements HttpInterceptor {
   ) {}
 
   intercept(httpRequest: HttpRequest<any>, handler: HttpHandler): Observable<HttpEvent<any>> {
-    // WYKLUCZENIA: login, register, refresh
     if (
       httpRequest.url.includes(`${this.authenticationService.host}/user/login`) ||
       httpRequest.url.includes(`${this.authenticationService.host}/user/register`)
-      //|| httpRequest.url.includes(`${this.authenticationService.host}/user/refresh`)
     ) {
       return handler.handle(httpRequest);
     }
 
-    // zawsze klonuj z withCredentials
     const request = httpRequest.clone({ withCredentials: true });
+
     return handler.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
         if ((error.status === 401 || error.status === 403)
@@ -59,18 +57,5 @@ export class AuthInterceptor implements HttpInterceptor {
         return throwError(() => error);
       })
     );
-
-    // return handler.handle(request).pipe(
-    //   catchError((error: HttpErrorResponse) => {
-    //     if ((error.status === 401 || error.status === 403) && !this.isRefreshing) {
-    //
-    //       console.log(error);
-    //       this.router.navigate(['/login']);
-    //     }
-    //     return throwError(() => error);
-    //   })
-    // );
-
-
   }
 }
