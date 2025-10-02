@@ -1,5 +1,6 @@
 package pl.krutkowski.users.controller;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
-import static org.springframework.http.HttpStatus.NO_CONTENT;
-import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.IMAGE_JPEG_VALUE;
 import static pl.krutkowski.users.constant.FileConstant.*;
 import static pl.krutkowski.users.constant.UserConstant.USER_NOT_FOUND_BY_USERNAME;
@@ -55,6 +55,27 @@ public class UserController extends ExceptionHandling {
         UserPrinciple userPrinciple = new UserPrinciple(loginUser);
         tokenService.login(userPrinciple, response);
         return new ResponseEntity<>(loginUser,OK);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        // szukamy refresh token w cookie
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("REFRESH_TOKEN".equals(cookie.getName())) {
+                    String refreshToken = cookie.getValue();
+                    if(tokenService.validate(refreshToken)) {
+                        String username = tokenService.getAuthenticationToken(refreshToken).getName();
+                        User loginUser = userService.findUserUsername(username);
+                        UserPrinciple userPrinciple = new UserPrinciple(loginUser);
+                        tokenService.login(userPrinciple, response);
+                        return ResponseEntity.ok().build();
+                    }
+                }
+            }
+        }
+        return ResponseEntity.status(401).body("Refresh token not found");
     }
 
     @GetMapping("/me")
