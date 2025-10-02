@@ -78,6 +78,24 @@ public class UserController extends ExceptionHandling {
         return ResponseEntity.status(401).body("Refresh token not found");
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        Cookie access = new Cookie("ACCESS_TOKEN", null);
+        access.setPath("/");
+        access.setHttpOnly(true);
+        access.setMaxAge(0); // natychmiast wygasa
+
+        Cookie refresh = new Cookie("REFRESH_TOKEN", null);
+        refresh.setPath("/");
+        refresh.setHttpOnly(true);
+        refresh.setMaxAge(0);
+
+        response.addCookie(access);
+        response.addCookie(refresh);
+
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/me")
     public ResponseEntity<User> getCurrentUser() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();

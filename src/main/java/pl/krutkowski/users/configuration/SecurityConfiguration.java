@@ -47,6 +47,7 @@ public class SecurityConfiguration {
                         .requestMatchers(SecurityConstant.PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
+                .logout(logout -> logout.disable())
                 .exceptionHandling(handler -> handler
                         .accessDeniedHandler(jwtAccessDeniedHandler)
                         .authenticationEntryPoint(jwtAccessForbiddenEntryPoint))
