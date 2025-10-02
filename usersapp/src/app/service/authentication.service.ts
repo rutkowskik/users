@@ -4,6 +4,7 @@ import {environment} from "../../environments/environment";
 import {catchError, map, Observable, of} from "rxjs";
 import { User } from '../model/user';
 import { JwtHelperService } from "@auth0/angular-jwt";
+import {Router} from "@angular/router";
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +14,7 @@ export class AuthenticationService {
   public host = environment.apiUrl;
   private loggedInUsername: any;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private router:Router) { }
 
   public login(user: User): Observable<HttpResponse<User>> {
     return this.http.post<User>(`${this.host}/user/login`, user, {observe: 'response', withCredentials: true});
@@ -24,13 +25,30 @@ export class AuthenticationService {
   }
 
   public logOut(): void {
-    this.loggedInUsername = null;
-    if (typeof window !== 'undefined' && localStorage){
-      localStorage.removeItem('user');
-      localStorage.removeItem('users');
+      this.http.post(`${this.host}/user/logout`, {}, { withCredentials: true })
+        .subscribe({
+          next: () => {
+            // czyścimy tylko dane trzymane lokalnie (user info)
+            if (typeof window !== 'undefined' && localStorage) {
+              localStorage.removeItem('user');
+              localStorage.removeItem('users');
+            }
+            this.loggedInUsername = null;
+            this.router.navigate(['/login']);
+          },
+          error: () => {
+            // nawet jeśli backend nie odpowie, czyścimy lokalnie
+            if (typeof window !== 'undefined' && localStorage) {
+              localStorage.removeItem('user');
+              localStorage.removeItem('users');
+            }
+            this.loggedInUsername = null;
+            this.router.navigate(['/login']);
+          }
+        });
     }
 
-  }
+  // }
 
   public addUserToLocalCache(user: User): void {
     if(typeof window !== 'undefined' && localStorage){

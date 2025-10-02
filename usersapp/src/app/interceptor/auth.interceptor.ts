@@ -25,6 +25,7 @@ export class AuthInterceptor implements HttpInterceptor {
   intercept(httpRequest: HttpRequest<any>, handler: HttpHandler): Observable<HttpEvent<any>> {
     if (
       httpRequest.url.includes(`${this.authenticationService.host}/user/login`) ||
+      httpRequest.url.includes(`${this.authenticationService.host}/user/logout`) ||
       httpRequest.url.includes(`${this.authenticationService.host}/user/register`)
     ) {
       return handler.handle(httpRequest);
@@ -34,7 +35,7 @@ export class AuthInterceptor implements HttpInterceptor {
 
     return handler.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
-        if ((error.status === 401 || error.status === 403)
+        if ((error.status === 401)
           && !this.isRefreshing
           && !httpRequest.url.includes('/user/login')
           && !httpRequest.url.includes('/user/refresh')) {

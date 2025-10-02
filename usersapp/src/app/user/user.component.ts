@@ -251,7 +251,7 @@ export class UserComponent implements OnInit, OnDestroy {
 
   onLogOut() : void {
     this.authenticationService.logOut();
-    this.router.navigate(['/login']);
+
     this.notificationService.notify(NotificationType.SUCCESS, "You` ve been logged out.");
   }
 
