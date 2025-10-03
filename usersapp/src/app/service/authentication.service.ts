@@ -51,6 +51,7 @@ export class AuthenticationService {
   // }
 
   public addUserToLocalCache(user: User): void {
+    this.loggedInUsername = user.username;
     if(typeof window !== 'undefined' && localStorage){
       localStorage.setItem('user', JSON.stringify(user));
     }
@@ -65,20 +66,24 @@ export class AuthenticationService {
   }
 
   public isLoggedIn(): Observable<boolean> {
-    return this.http.get<User>(`${this.host}/user/me`, { withCredentials: true })
-      .pipe(
-        map((user: User) => {
-          if (user) {
-            this.addUserToLocalCache(user);
-            return true;
-          }
-          return false;
-        }),
-        catchError(() => {
-          this.logOut();
-          return of(false);
-        })
-      );
+    if(this.loggedInUsername){
+      return of(true);
+    }else {
+      return this.http.get<User>(`${this.host}/user/me`, { withCredentials: true })
+        .pipe(
+          map((user: User) => {
+            if (user) {
+              this.addUserToLocalCache(user);
+              return true;
+            }
+            return false;
+          }),
+          catchError(() => {
+            this.logOut();
+            return of(false);
+          })
+        );
+    }
   }
 
 }

@@ -3,7 +3,7 @@ import {Injectable} from "@angular/core";
 import {AuthenticationService} from "../service/authentication.service";
 import {NotificationService} from "../service/notification.service";
 import {NotificationType} from "../enum/notification-type.enum";
-import {Observable, tap} from "rxjs";
+import {Observable, of, tap} from "rxjs";
 
 
 @Injectable({providedIn: 'root'})
