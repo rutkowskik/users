@@ -1,0 +1,19 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: users-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass hardPassword # opcjonalne hasło
+    volumes:
+      - ./redis-data:/data
+#    networks:
+#      - users-network
+
+volumes:
+  redis-data:
+
+#TODO when implementing docker compose for whole application
+#networks:
+#  users-network:
+#    driver: bridge
