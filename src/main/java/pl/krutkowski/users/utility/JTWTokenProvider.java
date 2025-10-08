@@ -64,6 +64,15 @@ public class JTWTokenProvider {
         return verifier.verify(token).getSubject();
     }
 
+    public Authentication getAuthenticationToken(String token) {
+        String username = getSubject(token);
+        if (username != null && !username.isEmpty()) {
+            List<GrantedAuthority> authorities = getAuthorities(token);
+            return new UsernamePasswordAuthenticationToken(username, null, authorities);
+        }
+        return null;
+    }
+
     private String[] getClaimsForUser(UserPrinciple userPrinciple) {
         List<String> authorities = new ArrayList<>();
         for (GrantedAuthority authority : userPrinciple.getAuthorities()) {

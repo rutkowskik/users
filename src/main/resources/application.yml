@@ -1,5 +1,9 @@
 jwt:
   secret: 3ZpZuH8yU4vwf9bfbY+lF8gG9Kyj37xftmZEGzVuBBk=
+  access-token:
+    expiration: 900000 # 15 minut w ms
+  refresh-token:
+    expiration: 604800000 # 7 dni w ms
 
 server:
   port: 8081
@@ -19,3 +23,9 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: 'true'
+  data:
+    redis:
+      password: hardPassword
+      host: localhost
+      port: 6379
+      timeout: 60000

@@ -13,11 +13,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pl.krutkowski.users.domain.HttpResponse;
-import pl.krutkowski.users.domain.User;
-import pl.krutkowski.users.domain.UserPrinciple;
+import pl.krutkowski.users.domain.*;
 import pl.krutkowski.users.exception.ExceptionHandling;
 import pl.krutkowski.users.exception.domain.*;
+import pl.krutkowski.users.service.RedisTokenService;
 import pl.krutkowski.users.service.UserService;
 import pl.krutkowski.users.token.TokenService;
 
@@ -29,6 +28,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.IMAGE_JPEG_VALUE;
@@ -47,53 +48,43 @@ public class UserController extends ExceptionHandling {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
+    private final RedisTokenService redisTokenService;
 
     @PostMapping("/login")
-    public ResponseEntity<User> loginUser(@RequestBody User user, HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<User> loginUser(@RequestBody User user,
+                                          HttpServletRequest request,
+                                          HttpServletResponse response) {
         authenticateUser(user.getUsername(), user.getPassword());
         User loginUser = userService.findUserUsername(user.getUsername());
         UserPrinciple userPrinciple = new UserPrinciple(loginUser);
-        tokenService.login(userPrinciple, response);
-        return new ResponseEntity<>(loginUser,OK);
+
+        tokenService.login(userPrinciple, response, request);
+
+        return new ResponseEntity<>(loginUser, OK);
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        // szukamy refresh token w cookie
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("REFRESH_TOKEN".equals(cookie.getName())) {
-                    String refreshToken = cookie.getValue();
-                    if(tokenService.validate(refreshToken)) {
-                        String username = tokenService.getAuthenticationToken(refreshToken).getName();
-                        User loginUser = userService.findUserUsername(username);
-                        UserPrinciple userPrinciple = new UserPrinciple(loginUser);
-                        tokenService.login(userPrinciple, response);
-                        return ResponseEntity.ok().build();
-                    }
-                }
-            }
+        try {
+            tokenService.refresh(request, response);
+            return ResponseEntity.ok().build();
+        } catch (InvalidTokenException | TokenReusedException e) {
+            log.error("Token refresh failed: {}", e.getMessage());
+            return ResponseEntity.status(401).body(e.getMessage());
         }
-        return ResponseEntity.status(401).body("Refresh token not found");
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
-        Cookie access = new Cookie("ACCESS_TOKEN", null);
-        access.setPath("/");
-        access.setHttpOnly(true);
-        access.setMaxAge(0); // natychmiast wygasa
-
-        Cookie refresh = new Cookie("REFRESH_TOKEN", null);
-        refresh.setPath("/");
-        refresh.setHttpOnly(true);
-        refresh.setMaxAge(0);
-
-        response.addCookie(access);
-        response.addCookie(refresh);
-
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        tokenService.logout(request, response);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/logout-all")
+    public ResponseEntity<HttpResponse> logoutAllDevices(HttpServletRequest request, HttpServletResponse response) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        tokenService.logoutAllDevices(username, response);
+        return response(OK, "Logged out from all devices");
     }
 
     @GetMapping("/me")
@@ -107,6 +98,56 @@ public class UserController extends ExceptionHandling {
         User user = userService.findUserUsername(username);
 
         return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/sessions")
+    public ResponseEntity<List<SessionInfo>> getActiveSessions(HttpServletRequest request) {
+
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<RefreshTokenData> tokens = redisTokenService.getUserActiveSessions(username);
+
+        String currentTokenHash = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("REFRESH_TOKEN".equals(cookie.getName())) {
+                    currentTokenHash = redisTokenService.hashToken(cookie.getValue());
+                    break;
+                }
+            }
+        }
+
+        final String currentHash = currentTokenHash;
+        List<SessionInfo> sessions = tokens.stream()
+                .map(token -> new SessionInfo(
+                        token.getTokenHash().substring(0, 8),
+                        token.getIssuedAt(),
+                        token.getLastUsedAt(),
+                        token.getExpiresAt(),
+                        token.getUserAgent(),
+                        token.getIpAddress(),
+                        token.getTokenHash().equals(currentHash)
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(sessions);
+    }
+
+    @DeleteMapping("/session/{sessionId}")
+    public ResponseEntity<Void> revokeSession(@PathVariable String sessionId) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<RefreshTokenData> tokens = redisTokenService.getUserActiveSessions(username);
+
+        Optional<RefreshTokenData> tokenToRevoke = tokens.stream()
+                .filter(t -> t.getTokenHash().startsWith(sessionId))
+                .findFirst();
+
+        if (tokenToRevoke.isPresent()) {
+            redisTokenService.revokeTokenByHash(tokenToRevoke.get().getTokenHash());
+            return ResponseEntity.ok().build();
+        }
+
+        return ResponseEntity.notFound().build();
     }
 
     @PostMapping("/register")
