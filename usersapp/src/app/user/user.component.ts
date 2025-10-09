@@ -7,8 +7,6 @@ import {NotificationType} from "../enum/notification-type.enum";
 import {HttpErrorResponse, HttpEvent, HttpEventType} from "@angular/common/http";
 import {AuthenticationService} from "../service/authentication.service";
 import {NgForm} from "@angular/forms";
-import {CustomHttpResponse} from "../model/custom-http-reposne";
-import {Router} from "@angular/router";
 import {FileUploadStatus} from "../model/file-upload-status";
 import {Role} from "../enum/role.enum";
 
@@ -21,10 +19,10 @@ export class UserComponent implements OnInit, OnDestroy {
 
   private titleSubject = new BehaviorSubject<string>('Users');
   public titleAction$ = this.titleSubject.asObservable();
-  public users: User[]=[];
-  public user: User = new User();
+  public users: User[] = [];
+  public user: User | null = null;
   public refreshing: boolean = false;
-  private subscriptions: Subscription [] = [];
+  private subscriptions: Subscription[] = [];
   selectedUser: User | undefined;
   fileName: string | undefined;
   profileImage: File | undefined;
@@ -33,13 +31,22 @@ export class UserComponent implements OnInit, OnDestroy {
   private currentUsername: string = '';
   fileStatus: FileUploadStatus = new FileUploadStatus();
 
-  constructor(private userService: UserService,
-              private notificationService: NotificationService,
-              private authenticationService: AuthenticationService,
-              private router: Router) {}
+  constructor(
+    private userService: UserService,
+    private notificationService: NotificationService,
+    private authenticationService: AuthenticationService
+  ) {}
 
   ngOnInit() {
-    this.user = this.authenticationService.getUserFromLocalCache();
+    const cachedUser = this.authenticationService.getUserFromLocalCache();
+
+    if (!cachedUser) {
+      console.error('User not found in cache, redirecting to login');
+      this.authenticationService.logOut();
+      return;
+    }
+
+    this.user = cachedUser;
     this.getUsers(true);
   }
 
@@ -55,51 +62,56 @@ export class UserComponent implements OnInit, OnDestroy {
           this.userService.addUsersToLocalCache(users);
           this.users = users;
           this.refreshing = false;
-          if(showNotification) {
-            this.sendNotification(NotificationType.SUCCESS, `${users.length} users(s) loaded successfully`);
+          if (showNotification) {
+            this.sendNotification(NotificationType.SUCCESS, `${users.length} user(s) loaded successfully`);
           }
         },
         error: (error: HttpErrorResponse) => {
-          this.sendNotification(NotificationType.ERROR, `${error.message}`);
+          this.sendNotification(NotificationType.ERROR, error.message);
           this.refreshing = false;
         }
-      }));
+      })
+    );
   }
 
   public onDeleteUser(userName: string): void {
-    this.subscriptions.push(this.userService.deleteUser(userName).subscribe({
-      next: (customHttpResponse: CustomHttpResponse) => {
-        this.notificationService.notify(NotificationType.SUCCESS, 'User deleted successfully');
-        this.getUsers(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.notificationService.notify(NotificationType.ERROR, error.error.message);
-      }
-    }))
+    this.subscriptions.push(
+      this.userService.deleteUser(userName).subscribe({
+        next: () => {
+          this.notificationService.notify(NotificationType.SUCCESS, 'User deleted successfully');
+          this.getUsers(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.notificationService.notify(NotificationType.ERROR, error.error.message);
+        }
+      })
+    );
   }
 
-  //todo block multiple method invocation
   public onResetPassword(emailFrom: NgForm): void {
     this.refreshing = true;
     const email = emailFrom.value['reset-password-email'];
-    this.subscriptions.push(this.userService.resetPassword(email)
-      .pipe(finalize(()=> {
-          emailFrom.reset();
-          this.refreshing = false;
-        }
-      ))
-      .subscribe({
-        next: (response ) => {
-          this.notificationService.notify(NotificationType.SUCCESS, 'The password has been reset successfully');
-        },
-        error: (error: HttpErrorResponse) => {
-          this.notificationService.notify(NotificationType.WARNING, error.error.message);
-        }
-      }));
+    this.subscriptions.push(
+      this.userService.resetPassword(email)
+        .pipe(
+          finalize(() => {
+            emailFrom.reset();
+            this.refreshing = false;
+          })
+        )
+        .subscribe({
+          next: () => {
+            this.notificationService.notify(NotificationType.SUCCESS, 'The password has been reset successfully');
+          },
+          error: (error: HttpErrorResponse) => {
+            this.notificationService.notify(NotificationType.WARNING, error.error.message);
+          }
+        })
+    );
   }
 
   private sendNotification(errorType: NotificationType, message: string): void {
-    if(message) {
+    if (message) {
       this.notificationService.notify(errorType, message);
     } else {
       this.notificationService.notify(errorType, 'An error has occurred. Please try again later.');
@@ -110,11 +122,10 @@ export class UserComponent implements OnInit, OnDestroy {
     this.editUser = editUser;
     this.currentUsername = editUser.username;
     this.clickButton('openUserEdit');
-
   }
 
-  onUpdateUser(){
-    if(this.processingRequest) return;
+  onUpdateUser() {
+    if (this.processingRequest) return;
     this.processingRequest = true;
     const formData = this.userService.createUserFormData(this.currentUsername, this.editUser, this.profileImage);
     this.subscriptions.push(
@@ -133,7 +144,7 @@ export class UserComponent implements OnInit, OnDestroy {
           this.processingRequest = false;
         }
       })
-    )
+    );
   }
 
   onSelectUser(selectedUser: User) {
@@ -144,12 +155,10 @@ export class UserComponent implements OnInit, OnDestroy {
   searchUsers(searchTerm: string): void {
     const results: User[] = [];
     for (const user of this.userService.getUsersFromLocalCache()) {
-      if(user.firstName.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1
-        ||
-        user.lastName.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1
-        ||
-        user.userId.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1
-        ||
+      if (
+        user.firstName.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1 ||
+        user.lastName.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1 ||
+        user.userId.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1 ||
         user.username.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1
       ) {
         results.push(user);
@@ -157,7 +166,6 @@ export class UserComponent implements OnInit, OnDestroy {
     }
     this.users = results;
     if (!searchTerm) {
-      //todo if the users are empty list return some information
       this.users = this.userService.getUsersFromLocalCache();
     }
   }
@@ -167,7 +175,7 @@ export class UserComponent implements OnInit, OnDestroy {
   }
 
   onAddNewUser(userForm: NgForm) {
-    if(this.processingRequest) return;
+    if (this.processingRequest) return;
     this.processingRequest = true;
     const formData = this.userService.createUserFormData(null, userForm.value, this.profileImage);
     this.subscriptions.push(
@@ -187,23 +195,24 @@ export class UserComponent implements OnInit, OnDestroy {
           this.processingRequest = false;
         }
       })
-    )
+    );
   }
 
   onProfileImageChange(event: Event): void {
-    const  input = event.target as HTMLInputElement
-    if(input.files && input.files[0]) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
       this.profileImage = input.files[0];
       this.fileName = this.profileImage.name;
     }
   }
 
   public get isAdmin(): boolean {
-    return this.getUserRole() === Role.ADMIN || this.getUserRole() === Role.SUPER_ADMIN;
+    const role = this.getUserRole();
+    return role === Role.ADMIN || role === Role.SUPER_ADMIN;
   }
 
   public get isManager(): boolean {
-    return  this.isAdmin || this.getUserRole() === Role.MANAGER;
+    return this.isAdmin || this.getUserRole() === Role.MANAGER;
   }
 
   public get isAdminOrManager(): boolean {
@@ -211,13 +220,19 @@ export class UserComponent implements OnInit, OnDestroy {
   }
 
   private getUserRole(): string {
-    return this.authenticationService.getUserFromLocalCache().role;
+    const user = this.authenticationService.getUserFromLocalCache();
+    if (!user || !user.role) {
+      console.warn('User or user role not found in cache');
+      return '';
+    }
+    return user.role;
   }
 
   private clickButton(buttonId: string): void {
-    let button = document.getElementById(buttonId);
-    if(button)
+    const button = document.getElementById(buttonId);
+    if (button) {
       button.click();
+    }
   }
 
   updateProfileImage(): void {
@@ -225,20 +240,32 @@ export class UserComponent implements OnInit, OnDestroy {
   }
 
   onUpdateCurrentUser(user: User) {
-    if(this.processingRequest) return;
+    if (this.processingRequest) return;
     this.refreshing = true;
     this.processingRequest = true;
-    this.currentUsername = this.authenticationService.getUserFromLocalCache().username;
+
+    const cachedUser = this.authenticationService.getUserFromLocalCache();
+    if (!cachedUser) {
+      this.sendNotification(NotificationType.ERROR, 'User not found in cache');
+      this.processingRequest = false;
+      this.refreshing = false;
+      return;
+    }
+
+    this.currentUsername = cachedUser.username;
     const formData = this.userService.createUserFormData(this.currentUsername, user, this.profileImage);
+
     this.subscriptions.push(
       this.userService.updatedUser(formData).subscribe({
         next: (response: User) => {
-          this.authenticationService.addUserToLocalCache(response)
+          this.authenticationService.addUserToLocalCache(response);
+          this.user = response;
           this.getUsers(false);
           this.fileName = undefined;
           this.profileImage = undefined;
           this.sendNotification(NotificationType.SUCCESS, `${response.firstName} ${response.lastName} updated successfully`);
           this.processingRequest = false;
+          this.refreshing = false;
         },
         error: (error: HttpErrorResponse) => {
           this.sendNotification(NotificationType.ERROR, error.error.message);
@@ -246,19 +273,24 @@ export class UserComponent implements OnInit, OnDestroy {
           this.processingRequest = false;
         }
       })
-    )
+    );
   }
 
-  onLogOut() : void {
+  onLogOut(): void {
     this.authenticationService.logOut();
-
-    this.notificationService.notify(NotificationType.SUCCESS, "You` ve been logged out.");
+    this.notificationService.notify(NotificationType.SUCCESS, "You've been logged out.");
   }
 
   onUpdateProfileImage(): void {
+    if (!this.user) {
+      this.sendNotification(NotificationType.ERROR, 'User not found');
+      return;
+    }
+
     const formData = new FormData();
     formData.append("username", this.user.username);
-    if(this.profileImage){
+
+    if (this.profileImage) {
       formData.append("image", this.profileImage);
       this.subscriptions.push(
         this.userService.updateProfileImage(formData).subscribe({
@@ -268,31 +300,34 @@ export class UserComponent implements OnInit, OnDestroy {
           error: (response: HttpErrorResponse) => {
             this.sendNotification(NotificationType.ERROR, response.error.message);
             this.fileStatus.status = 'done';
-            }
+          }
         })
-      )
+      );
     }
   }
 
   private reportUploadProgress(httpEvent: HttpEvent<any>) {
     switch (httpEvent.type) {
       case HttpEventType.UploadProgress:
-        if (httpEvent.total)
+        if (httpEvent.total) {
           this.fileStatus.percentage = Math.round(100 * httpEvent.loaded / httpEvent.total);
+        }
         this.fileStatus.status = 'progress';
         break;
       case HttpEventType.Response:
-        if(httpEvent.status === 200){
-          this.user.profileImageUrl = `${httpEvent.body.profileImageUrl}?time=${new Date().getMilliseconds()}`;
-          this.notificationService.notify(NotificationType.SUCCESS, `${httpEvent.body.firstName}\'s profile image uploaded successfully`);
+        if (httpEvent.status === 200) {
+          if (this.user) {
+            this.user.profileImageUrl = `${httpEvent.body.profileImageUrl}?time=${new Date().getMilliseconds()}`;
+          }
+          this.notificationService.notify(NotificationType.SUCCESS, `${httpEvent.body.firstName}'s profile image uploaded successfully`);
           this.fileStatus.status = 'done';
           break;
         } else {
           this.notificationService.notify(NotificationType.ERROR, `Unable to upload image. Please try again`);
           break;
         }
-        default:
-          `Finished all process`;
+      default:
+        console.log('Finished all processes');
     }
   }
 

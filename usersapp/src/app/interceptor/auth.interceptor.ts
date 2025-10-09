@@ -7,7 +7,7 @@ import {
   HttpRequest
 } from '@angular/common/http';
 import { AuthenticationService } from "../service/authentication.service";
-import { catchError, Observable, switchMap, throwError, finalize } from "rxjs";
+import { catchError, Observable, switchMap, throwError } from "rxjs";
 import { Injectable } from "@angular/core";
 import {Router} from "@angular/router";
 
@@ -23,12 +23,17 @@ export class AuthInterceptor implements HttpInterceptor {
   ) {}
 
   intercept(httpRequest: HttpRequest<any>, handler: HttpHandler): Observable<HttpEvent<any>> {
-    if (
-      httpRequest.url.includes(`${this.authenticationService.host}/user/login`) ||
-      httpRequest.url.includes(`${this.authenticationService.host}/user/logout`) ||
-      httpRequest.url.includes(`${this.authenticationService.host}/user/register`)
-    ) {
-      return handler.handle(httpRequest);
+    const publicEndpoints = [
+      '/user/login',
+      '/user/logout',
+      '/user/register',
+      '/user/me',
+      '/user/refresh'
+    ];
+
+    if (publicEndpoints.some(endpoint => httpRequest.url.includes(endpoint))) {
+      const request = httpRequest.clone({ withCredentials: true });
+      return handler.handle(request);
     }
 
     const request = httpRequest.clone({ withCredentials: true });

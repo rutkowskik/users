@@ -1,12 +1,11 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
-import {NotificationService} from "../service/notification.service";
-import {AuthenticationService} from "../service/authentication.service";
-import {Router} from "@angular/router";
-import {User} from "../model/user";
-import {HttpErrorResponse, HttpResponse} from "@angular/common/http";
-import {Subscription} from "rxjs";
-import {NotificationType} from "../enum/notification-type.enum";
-import {HeaderType} from "../enum/header-type.enum";
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { NotificationService } from "../service/notification.service";
+import { AuthenticationService } from "../service/authentication.service";
+import { ActivatedRoute, Router } from "@angular/router";
+import { User } from "../model/user";
+import { HttpErrorResponse, HttpResponse } from "@angular/common/http";
+import { Subscription } from "rxjs";
+import { NotificationType } from "../enum/notification-type.enum";
 
 @Component({
   selector: 'app-login',
@@ -14,21 +13,21 @@ import {HeaderType} from "../enum/header-type.enum";
   styleUrl: './login.component.css'
 })
 export class LoginComponent implements OnInit, OnDestroy {
-  private subscriptions: Subscription [] = [];
+  private subscriptions: Subscription[] = [];
   showLoading: boolean = false;
+  private returnUrl: string = '/user/management';
 
-  constructor(private router: Router,
-              private authenticationService: AuthenticationService,
-              private notificationService: NotificationService ) {
-  }
-
+  constructor(
+    private router: Router,
+    private route: ActivatedRoute,
+    private authenticationService: AuthenticationService,
+    private notificationService: NotificationService
+  ) {}
 
   ngOnInit(): void {
-    // if(this.authenticationService.isLoggedIn()){
-    //   this.router.navigateByUrl('/user/management');
-    // } else {
-    //   this.router.navigateByUrl('/login');
-    // }
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/user/management';
+
+    console.log('LoginComponent initialized, returnUrl:', this.returnUrl);
   }
 
   ngOnDestroy(): void {
@@ -37,27 +36,37 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   onLogin(user: User): void {
     this.showLoading = true;
+    console.log('Attempting login for user:', user.username);
+
     this.subscriptions.push(
       this.authenticationService.login(user).subscribe({
         next: (response: HttpResponse<User>) => {
+          console.log('Login successful:', response.status);
+
           if (response.body != null) {
             this.authenticationService.addUserToLocalCache(response.body);
+            this.notificationService.notify(
+              NotificationType.SUCCESS,
+              'Login successful!'
+            );
           }
-          this.router.navigateByUrl('/user/management');
+
+          this.router.navigateByUrl(this.returnUrl);
           this.showLoading = false;
         },
-        error: (error :HttpErrorResponse)=> {
-          this.sendErrorNotification(NotificationType.ERROR, error.error.message);
+        error: (error: HttpErrorResponse) => {
+          console.error('Login failed:', error.status, error.error);
+
+          const message = error.error?.message || 'Invalid username or password';
+          this.sendErrorNotification(NotificationType.ERROR, message);
           this.showLoading = false;
         }
-        }
-      )
-    )
-
+      })
+    );
   }
 
   private sendErrorNotification(errorType: NotificationType, message: string): void {
-    if(message) {
+    if (message) {
       this.notificationService.notify(errorType, message);
     } else {
       this.notificationService.notify(errorType, 'An error has occurred. Please try again later.');

@@ -108,7 +108,7 @@
     </div>
 
     <!-- user profile -->
-    <div class="tab-content mt-3 fade" id="profile">
+    <div *ngIf="user" class="tab-content mt-3 fade" id="profile">
       <div class="container">
         <div class="row flex-lg-nowrap">
           <div class="col">
@@ -121,7 +121,7 @@
                         <div class="col-12 col-sm-auto">
                           <div class="mx-auto" style="width: 120px;">
                             <div class="d-flex justify-content-center align-items-center rounded">
-                              <img class="rounded" height="135" width="135" src="{{user?.profileImageUrl}}" alt="">
+                              <img class="rounded" height="135" width="135" src="{{user.profileImageUrl}}" alt="">
                             </div>
                             <div *ngIf="fileStatus?.status==='progress'" class="progress mt-1">
                               <div class="progress-bar bg-info" role="progressbar"
@@ -132,10 +132,10 @@
                         </div>
                         <div class="col d-flex flex-column flex-sm-row justify-content-between mb-3">
                           <div class="text-center text-sm-start mb-2 mb-sm-0">
-                            <h4 class="pt-sm-2 pb-1 mb-0 text-nowrap">{{user?.firstName}} {{user?.lastName}}</h4>
-                            <p class="mb-0">{{user?.username}}</p>
+                            <h4 class="pt-sm-2 pb-1 mb-0 text-nowrap">{{user.firstName}} {{user.lastName}}</h4>
+                            <p class="mb-0">{{user.username}}</p>
                             <div *ngIf="user.lastLoginDateDisplay !== null" class="text-muted"><small>Last login:
-                              {{user?.lastLoginDateDisplay | date:'medium'}}</small></div>
+                              {{user.lastLoginDateDisplay | date:'medium'}}</small></div>
                             <div class="mt-2">
                               <button (click)="updateProfileImage()" class="btn btn-primary" type="button">
                                 <i class="fa fa-fw fa-camera"></i>
@@ -144,7 +144,7 @@
                             </div>
                           </div>
                           <div class="text-center text-sm-right">
-                            <div class="text-muted"><small>Joined {{user?.joinDate | date:'mediumDate'}}</small></div>
+                            <div class="text-muted"><small>Joined {{user.joinDate | date:'mediumDate'}}</small></div>
                           </div>
                         </div>
                       </div>
@@ -254,12 +254,21 @@
                 <div class="card">
                   <div class="card-body">
                     <h6 class="card-title font-weight-bold">Permissions From Role</h6>
-                    <h6 *ngFor="let authority of user?.authorities" class="card-text">{{authority}}</h6>
+                    <h6 *ngFor="let authority of user.authorities" class="card-text">{{authority}}</h6>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="!user" class="tab-content mt-3 fade">
+      <div class="container">
+        <div class="text-center py-5">
+          <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+          <p class="mt-3">Loading user profile...</p>
         </div>
       </div>
     </div>
@@ -388,10 +397,10 @@
                 <input type="text" name="role" required ngModel="USER" readonly class="form-control">
               </div>
               <div class="input-group mb-3 ">
-                  <span>Profile Picture </span>
-                  <div class="d-flex justify-content-end w-100">
-                    <input type="file" accept="image/*" name="profileImage" class="form-control" (change)="onProfileImageChange($event)">
-                  </div>
+                <span>Profile Picture </span>
+                <div class="d-flex justify-content-end w-100">
+                  <input type="file" accept="image/*" name="profileImage" class="form-control" (change)="onProfileImageChange($event)">
+                </div>
               </div>
               <fieldset class="mb-3">
                 <div class="form-check">
