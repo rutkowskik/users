@@ -41,6 +41,7 @@ public class TokenServiceImpl implements TokenService {
      * Login - generate token and store refresh token in redis
      * TOKENS IN COOKIES (HttpOnly, Secure, SameSite)
      */
+    @Override
     public void login(UserPrinciple userPrinciple, HttpServletResponse response, HttpServletRequest request) {
         String username = userPrinciple.getUsername();
 
@@ -65,6 +66,7 @@ public class TokenServiceImpl implements TokenService {
      * Refresh - check in Redis and generate new tokens
      * Return void - tokens set in cookies
      */
+    @Override
     public void refresh(HttpServletRequest request, HttpServletResponse response)
             throws InvalidTokenException, TokenReusedException {
 
@@ -120,6 +122,7 @@ public class TokenServiceImpl implements TokenService {
     /**
      * Logout all devices
      */
+    @Override
     public void logoutAllDevices(String username, HttpServletResponse response) {
         redisTokenService.revokeAllUserTokens(username);
         clearAuthCookies(response);
@@ -130,6 +133,7 @@ public class TokenServiceImpl implements TokenService {
     /**
      * Validate access token
      */
+    @Override
     public boolean validateAccessToken(String token) {
         return jwtTokenProvider.isTokenValid(token);
     }
@@ -137,6 +141,7 @@ public class TokenServiceImpl implements TokenService {
     /**
      * Validate refresh token (JWT + Redis)
      */
+    @Override
     public boolean validateRefreshToken(String token) {
         return jwtTokenProvider.isTokenValid(token) &&
                 redisTokenService.isTokenValid(token);
@@ -145,6 +150,7 @@ public class TokenServiceImpl implements TokenService {
     /**
      * Get Authentication from token
      */
+    @Override
     public Authentication getAuthenticationToken(String token) {
         return jwtTokenProvider.getAuthenticationToken(token);
     }
