@@ -9,7 +9,7 @@
 //import org.springframework.test.context.DynamicPropertySource;
 //import pl.krutkowski.users.domain.UserPrinciple;
 //import pl.krutkowski.users.service.RedisTokenService;
-//import pl.krutkowski.users.token.TokenService;
+//import pl.krutkowski.users.service.TokenService;
 //
 //@SpringBootTest
 //@AutoConfigureTestDatabase

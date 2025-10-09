@@ -15,11 +15,10 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import pl.krutkowski.users.domain.HttpResponse;
+import pl.krutkowski.users.model.HttpResponse;
 import pl.krutkowski.users.exception.domain.*;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.util.Objects;
 
 import static org.springframework.http.HttpStatus.*;

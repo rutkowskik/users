@@ -1,4 +1,4 @@
-package pl.krutkowski.users.token;
+package pl.krutkowski.users.service.impl;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,12 +9,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
-import pl.krutkowski.users.domain.RefreshTokenData;
-import pl.krutkowski.users.domain.User;
-import pl.krutkowski.users.domain.UserPrinciple;
+import pl.krutkowski.users.entity.RefreshTokenData;
+import pl.krutkowski.users.entity.User;
+import pl.krutkowski.users.model.UserPrinciple;
 import pl.krutkowski.users.exception.domain.InvalidTokenException;
 import pl.krutkowski.users.exception.domain.TokenReusedException;
+import pl.krutkowski.users.model.DataForRefreshTokenStore;
 import pl.krutkowski.users.service.RedisTokenService;
+import pl.krutkowski.users.service.TokenService;
 import pl.krutkowski.users.utility.JTWTokenProvider;
 
 import java.time.LocalDateTime;
@@ -23,7 +25,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TokenService {
+public class TokenServiceImpl implements TokenService {
 
     public static final String USER_AGENT_HEADER_NAME = "User-Agent";
     private final JTWTokenProvider jwtTokenProvider;
@@ -59,23 +61,6 @@ public class TokenService {
         log.info("User logged in: {}, token family: {}", username, refreshTokenData.getTokenFamily());
     }
 
-    private RefreshTokenData prepareTokenDataForRedis(DataForRefreshTokenStore data) {
-        String tokenFamily = data.tokenFamily() != null ? data.tokenFamily() : UUID.randomUUID().toString();
-
-        String tokenHash = redisTokenService.hashToken(data.refreshToken());
-
-        return RefreshTokenData.builder()
-                .tokenHash(tokenHash)
-                .username(data.username())
-                .tokenFamily(tokenFamily)
-                .issuedAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000))
-                .userAgent(data.request().getHeader(USER_AGENT_HEADER_NAME))
-                .ipAddress(getClientIpAddress(data.request()))
-                .lastUsedAt(LocalDateTime.now())
-                .build();
-    }
-
     /**
      * Refresh - check in Redis and generate new tokens
      * Return void - tokens set in cookies
@@ -106,7 +91,7 @@ public class TokenService {
         String newAccessToken = jwtTokenProvider.generateToken(userPrinciple, accessTokenExpiration);
         String newRefreshToken = jwtTokenProvider.generateToken(userPrinciple, refreshTokenExpiration);
 
-        DataForRefreshTokenStore dataForRefreshTokenStore = new DataForRefreshTokenStore(refreshToken, request, userPrinciple.getUsername(), refreshTokenData.getTokenFamily());
+        DataForRefreshTokenStore dataForRefreshTokenStore = new DataForRefreshTokenStore(newRefreshToken, request, userPrinciple.getUsername(), refreshTokenData.getTokenFamily());
         RefreshTokenData newRefreshTokenData = prepareTokenDataForRedis(dataForRefreshTokenStore);
         saveRefreshTokenInRedis(newRefreshTokenData);
 
@@ -180,6 +165,23 @@ public class TokenService {
                         .toArray(String[]::new)
         );
         return userPrinciple;
+    }
+
+    private RefreshTokenData prepareTokenDataForRedis(DataForRefreshTokenStore data) {
+        String tokenFamily = data.tokenFamily() != null ? data.tokenFamily() : UUID.randomUUID().toString();
+
+        String tokenHash = redisTokenService.hashToken(data.refreshToken());
+
+        return RefreshTokenData.builder()
+                .tokenHash(tokenHash)
+                .username(data.username())
+                .tokenFamily(tokenFamily)
+                .issuedAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000))
+                .userAgent(data.request().getHeader(USER_AGENT_HEADER_NAME))
+                .ipAddress(getClientIpAddress(data.request()))
+                .lastUsedAt(LocalDateTime.now())
+                .build();
     }
 
     private void saveRefreshTokenInRedis(RefreshTokenData refreshTokenData) {

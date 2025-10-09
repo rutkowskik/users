@@ -11,13 +11,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import pl.krutkowski.users.constant.SecurityConstant;
-import pl.krutkowski.users.token.TokenService;
+import pl.krutkowski.users.service.TokenService;
 
 import java.io.IOException;
 
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
-import static org.springframework.http.HttpStatus.OK;
 import static pl.krutkowski.users.constant.SecurityConstant.OPTIONS_HTTP_METHOD;
 
 @Slf4j

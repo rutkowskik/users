@@ -1,13 +1,10 @@
 package pl.krutkowski.users.service;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import pl.krutkowski.users.domain.TokenStats;
-import pl.krutkowski.users.domain.UserSessionCount;
+import pl.krutkowski.users.model.TokenStats;
+import pl.krutkowski.users.model.UserSessionCount;
 
 import java.util.Collections;
 import java.util.List;

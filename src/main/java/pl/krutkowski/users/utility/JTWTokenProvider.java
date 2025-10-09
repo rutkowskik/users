@@ -12,7 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import pl.krutkowski.users.domain.UserPrinciple;
+import pl.krutkowski.users.model.UserPrinciple;
 
 import java.util.ArrayList;
 import java.util.Date;

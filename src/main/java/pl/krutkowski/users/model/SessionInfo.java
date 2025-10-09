@@ -1,4 +1,4 @@
-package pl.krutkowski.users.domain;
+package pl.krutkowski.users.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,5 +14,5 @@ public class SessionInfo {
     private LocalDateTime expiresAt;
     private String userAgent;
     private String ipAddress;
-    private boolean current; // czy to aktualna sesja
+    private boolean current;
 }

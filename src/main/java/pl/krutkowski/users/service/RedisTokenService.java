@@ -5,14 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import pl.krutkowski.users.domain.RefreshTokenData;
+import pl.krutkowski.users.entity.RefreshTokenData;
 import pl.krutkowski.users.exception.domain.InvalidTokenException;
 import pl.krutkowski.users.exception.domain.TokenReusedException;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service

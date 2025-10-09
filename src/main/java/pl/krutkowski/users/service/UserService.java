@@ -1,7 +1,7 @@
 package pl.krutkowski.users.service;
 
 import org.springframework.web.multipart.MultipartFile;
-import pl.krutkowski.users.domain.User;
+import pl.krutkowski.users.entity.User;
 import pl.krutkowski.users.exception.domain.*;
 
 import javax.mail.MessagingException;

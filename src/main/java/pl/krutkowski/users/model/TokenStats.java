@@ -1,4 +1,4 @@
-package pl.krutkowski.users.domain;
+package pl.krutkowski.users.model;
 
 import lombok.Builder;
 import lombok.Data;

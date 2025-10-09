@@ -13,12 +13,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pl.krutkowski.users.domain.*;
+import pl.krutkowski.users.entity.RefreshTokenData;
+import pl.krutkowski.users.entity.User;
 import pl.krutkowski.users.exception.ExceptionHandling;
 import pl.krutkowski.users.exception.domain.*;
+import pl.krutkowski.users.model.HttpResponse;
+import pl.krutkowski.users.model.SessionInfo;
+import pl.krutkowski.users.model.UserPrinciple;
 import pl.krutkowski.users.service.RedisTokenService;
+import pl.krutkowski.users.service.TokenService;
 import pl.krutkowski.users.service.UserService;
-import pl.krutkowski.users.token.TokenService;
 
 import javax.mail.MessagingException;
 import java.io.ByteArrayOutputStream;
@@ -31,7 +35,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.springframework.http.HttpStatus.*;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.MediaType.IMAGE_JPEG_VALUE;
 import static pl.krutkowski.users.constant.FileConstant.*;
 import static pl.krutkowski.users.constant.UserConstant.USER_NOT_FOUND_BY_USERNAME;
