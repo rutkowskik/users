@@ -23,11 +23,6 @@ export class RegisterComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    if(this.authenticationService.isLoggedIn()){
-      this.router.navigateByUrl('/user/management');
-    } else {
-      this.router.navigateByUrl('/register');
-    }
   }
 
   ngOnDestroy(): void {
