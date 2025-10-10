@@ -158,7 +158,6 @@ public class TokenServiceImpl implements TokenService {
     // ===== Helper methods =====
 
     private UserPrinciple generateUserPrinciple(String refreshToken) {
-        //generate new token
         Authentication authentication = jwtTokenProvider.getAuthenticationToken(refreshToken);
         String username = authentication.getName();
 

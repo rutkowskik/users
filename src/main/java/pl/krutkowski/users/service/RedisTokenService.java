@@ -24,6 +24,7 @@ public class RedisTokenService {
     private static final String USER_TOKENS_PREFIX = "user_tokens:";
     private static final String TOKEN_FAMILY_PREFIX = "token_family:";
     private static final String REVOKED_PREFIX = "revoked_token:";
+    public static final String REVOKED_INFO = "revoked_info:";
 
     /**
      * Save refresh token in Redis
@@ -266,12 +267,12 @@ public class RedisTokenService {
      * Save information revoked token (reuse detection)
      */
     private void saveRevokedTokenInfo(RefreshTokenData tokenData) {
-        String key = "revoked_info:" + tokenData.getTokenHash();
+        String key = REVOKED_INFO + tokenData.getTokenHash();
         redisTemplate.opsForValue().set(key, tokenData, 24, TimeUnit.HOURS);
     }
 
     private RefreshTokenData getRevokedTokenInfo(String tokenHash) {
-        String key = "revoked_info:" + tokenHash;
+        String key = REVOKED_INFO + tokenHash;
         return (RefreshTokenData) redisTemplate.opsForValue().get(key);
     }
 }
