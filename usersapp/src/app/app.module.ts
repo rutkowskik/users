@@ -15,6 +15,7 @@ import { RegisterComponent } from './register/register.component';
 import { UserComponent } from './user/user.component';
 import {FormsModule} from "@angular/forms";
 import { LoadingSpinnerComponent } from './common/loading-spinner/loading-spinner.component';
+import { NotFoundComponent } from './not-found/not-found.component';
 
 @NgModule({
   declarations: [
@@ -22,7 +23,8 @@ import { LoadingSpinnerComponent } from './common/loading-spinner/loading-spinne
     LoginComponent,
     RegisterComponent,
     UserComponent,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    NotFoundComponent
   ],
   imports: [
     BrowserModule,

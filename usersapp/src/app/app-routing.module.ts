@@ -5,12 +5,15 @@ import {RegisterComponent} from "./register/register.component";
 import {UserComponent} from "./user/user.component";
 import {AuthenticationGuard} from "./guard/authentication.guard";
 import {LoginGuard} from "./guard/login.guard";
+import {NotFoundComponent} from "./not-found/not-found.component";
 
 const routes: Routes = [
   {path: 'login', component: LoginComponent, canActivate: [LoginGuard]},
   {path: 'register', component: RegisterComponent, canActivate: [LoginGuard]},
   {path: 'user/management', component: UserComponent, canActivate: [AuthenticationGuard]},
   {path: '', redirectTo: 'login', pathMatch: 'full'},
+  { path: 'not-found', component: NotFoundComponent },
+  { path: '**', redirectTo: '/not-found' }
 ];
 
 @NgModule({
