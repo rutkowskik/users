@@ -1,17 +1,16 @@
 # 🏗️ Etap 1: Build Angular App
 FROM node:20-alpine AS build
 
-WORKDIR /app
+WORKDIR /usr/local/app
 
-# Kopiujemy package.json i package-lock.json
-COPY package*.json ./
+# Kopiujemy pliki zależności
+COPY ./ /usr/local/app
 
 # Instalujemy zależności
 RUN npm install --legacy-peer-deps
 
-# Kopiujemy źródła i budujemy aplikację produkcyjną
-COPY . .
-RUN npm run build --prod
+# Budowa aplikacji w trybie produkcyjnym
+RUN npm run build -- --configuration production
 
 # 🌐 Etap 2: Serwowanie przez Nginx
 FROM nginx:1.25-alpine
@@ -23,7 +22,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Kopiujemy zbudowany frontend z poprzedniego etapu
-COPY --from=build /app/dist/usersapp /usr/share/nginx/html
+COPY --from=build /usr/local/app/dist/usersapp/browser /usr/share/nginx/html
 
 # Otwieramy port 80
 EXPOSE 80
