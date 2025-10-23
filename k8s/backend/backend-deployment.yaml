@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-backend
+  namespace: users-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: users-backend
+  template:
+    metadata:
+      labels:
+        app: users-backend
+    spec:
+      containers:
+        - name: backend
+          image: kacperroot/users-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: users-config
+            - secretRef:
+                name: users-secrets

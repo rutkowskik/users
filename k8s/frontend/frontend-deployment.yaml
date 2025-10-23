@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-frontend
+  namespace: users-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: users-frontend
+  template:
+    metadata:
+      labels:
+        app: users-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: kacperroot/users-frontend:v1.0.0
+          ports:
+            - containerPort: 80
