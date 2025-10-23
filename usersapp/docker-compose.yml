@@ -1,13 +1,14 @@
 version: '3.9'
 
 services:
-  usersapp:
+  users-frontend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: usersapp
+    container_name: users-frontend
     ports:
       - "80:80"
+    image: kacperroot/users-frontend:latest
     restart: always
     environment:
       - NODE_ENV=production
