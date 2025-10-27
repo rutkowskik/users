@@ -1,9 +1,10 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: postgres
   namespace: users-app
 spec:
+  serviceName: postgres
   replicas: 1
   selector:
     matchLabels:
@@ -17,10 +18,14 @@ spec:
         - name: postgres
           image: postgres:15
           ports:
-            - containerPort: 5432
+            - name: postgres
+              containerPort: 5432
           env:
             - name: POSTGRES_DB
-              value: "usersdb"
+              valueFrom:
+                secretKeyRef:
+                  name: users-secrets
+                  key: POSTGRES_DB_NAME
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
@@ -32,9 +37,28 @@ spec:
                   name: users-secrets
                   key: DB_PASSWORD
           volumeMounts:
-            - name: postgres-storage
+            - name: postgres-data
               mountPath: /var/lib/postgresql/data
-      volumes:
-        - name: postgres-storage
-          persistentVolumeClaim:
-            claimName: postgres-pvc
+              subPath: postgres
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: users-app
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
