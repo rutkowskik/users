@@ -1,8 +1,8 @@
 package pl.krutkowski.users.configuration;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.catalina.filters.CorsFilter;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.*;
@@ -26,6 +26,7 @@ import pl.krutkowski.users.filter.JwtAccessForbiddenEntryPoint;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -36,6 +37,19 @@ public class SecurityConfiguration {
     private final JwtAccessForbiddenEntryPoint jwtAccessForbiddenEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final JWTAuthorizationFilter jwtAuthorizationFilter;
+
+    // CORS configuration from application-{profile}.yml
+    @Value("${cors.allowed-origins:http://localhost:4200}")
+    private String allowedOrigins;
+
+    @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS}")
+    private String allowedMethods;
+
+    @Value("${cors.allowed-headers:*}")
+    private String allowedHeaders;
+
+    @Value("${cors.allow-credentials:true}")
+    private boolean allowCredentials;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
