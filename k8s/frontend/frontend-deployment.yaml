@@ -18,3 +18,20 @@ spec:
           image: kacperroot/users-frontend:v1.0.0
           ports:
             - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: users-app
+spec:
+  selector:
+    app: users-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
