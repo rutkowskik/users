@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: kacperroot/users-frontend:v1.0.0
+          image: kacperroot/users-frontend:20251028-185358
           ports:
             - containerPort: 80
           resources:

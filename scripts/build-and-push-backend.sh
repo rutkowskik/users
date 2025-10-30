@@ -1,37 +1,48 @@
 #!/bin/bash
-set -e
 
-# === Konfiguracja ===
-APP_NAME="users-backend"
-REGISTRY="kacperroot"
-IMAGE_NAME="kacperrutkowski/$APP_NAME"
-TAG=$(date +%Y%m%d-%H%M)
-WAR_FILE="target/users_app.jar"
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-# === Sprawdzenie MAVEN ===
-echo "🔧 Buduję aplikację Maven..."
+DOCKER_REGISTRY="kacperroot"
+IMAGE_NAME="users-backend"
+
+echo -e "${GREEN}🔨 Build and push backendu${NC}"
+echo ""
+
+# Build Maven
+echo "Maven build..."
 mvn clean package -DskipTests
-
-# === Sprawdzenie WAR ===
-if [ ! -f "$WAR_FILE" ]; then
-  echo "❌ Plik WAR nie został znaleziony: $WAR_FILE"
-  exit 1
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error during Maven build!${NC}"
+    exit 1
 fi
 
-# === Budowanie obrazu Dockera ===
-echo "🐳 Buduję obraz Dockera..."
-docker build -t $IMAGE_NAME:$TAG -t $IMAGE_NAME:latest -f ../Dockerfile ..
+# Tag z datą
+TAG=$(date +%Y%m%d-%H%M%S)
+FULL_IMAGE="${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG}"
+LATEST_IMAGE="${DOCKER_REGISTRY}/${IMAGE_NAME}:latest"
 
-# === Logowanie do rejestru ===
-echo "🔑 Logowanie do Docker Registry..."
-docker login $REGISTRY
+# Build Docker
+echo "🐳 Docker build..."
+docker build -t ${FULL_IMAGE} .
+docker tag ${FULL_IMAGE} ${LATEST_IMAGE}
 
-# === Push obrazów ===
-echo "⬆️ Wysyłanie obrazów do rejestru..."
-docker push $IMAGE_NAME:$TAG
-docker push $IMAGE_NAME:latest
+if [ $? -ne 0 ]; then
+    echo -e "${RED} Error during Docker build!${NC}"
+    exit 1
+fi
 
-# === Podsumowanie ===
-echo "✅ Obraz został pomyślnie zbudowany i wysłany:"
-echo "   - $IMAGE_NAME:$TAG"
-echo "   - $IMAGE_NAME:latest"
+# Push
+echo "📤 Docker push..."
+docker push ${FULL_IMAGE}
+docker push ${LATEST_IMAGE}
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Error during push!${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Done!${NC}"
+echo "Image: ${FULL_IMAGE}"
