@@ -11,7 +11,7 @@
     <groupId>pl.krutkowski</groupId>
     <artifactId>users</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>war</packaging>
     <name>users</name>
     <description>users</description>
     <url/>

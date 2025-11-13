@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: kacperroot/users-backend:latest
+          image: kacperroot/users-backend:20251031-103210
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -28,6 +28,9 @@ spec:
                 name: users-config
             - secretRef:
                 name: users-secrets
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
 ---
 apiVersion: v1
 kind: Service
@@ -39,4 +42,4 @@ spec:
     app: users-backend
   ports:
     - port: 8081
-      targetPort: 8081
+      targetPort: 8080

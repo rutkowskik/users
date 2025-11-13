@@ -4,7 +4,6 @@ metadata:
   name: users-app-ingress
   namespace: users-app
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
@@ -12,6 +11,7 @@ spec:
     - host: users.local
       http:
         paths:
+          # Backend API
           - path: /api(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
@@ -20,8 +20,18 @@ spec:
                 port:
                   number: 8081
 
-          - path: /
-            pathType: Prefix
+          # React static files
+          - path: /static(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80
+
+          # Catch-all dla React (SPA)
+          - path: /(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: frontend-service
