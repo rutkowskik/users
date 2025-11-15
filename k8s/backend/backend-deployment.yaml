@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: kacperroot/users-backend:20251031-103210
+          image: kacperroot/users-backend:20251113-061454
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
