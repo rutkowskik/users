@@ -5,7 +5,6 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import jakarta.servlet.http.HttpServletRequest;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -13,7 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import pl.krutkowski.users.domain.UserPrinciple;
+import pl.krutkowski.users.model.UserPrinciple;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -29,11 +28,11 @@ public class JTWTokenProvider {
     @Value("${jwt.secret}")
     private String secret;
 
-    public String generateToken(UserPrinciple userPrinciple) {
+    public String generateToken(UserPrinciple userPrinciple, long expiry) {
         String [] claims = getClaimsForUser(userPrinciple);
         return JWT.create().withIssuer(K_RUTKOWSKI).withAudience(CAR_APP)
                 .withIssuedAt(new Date()).withSubject(userPrinciple.getUsername())
-                .withArrayClaim(AUTHORITIES, claims).withExpiresAt(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .withArrayClaim(AUTHORITIES, claims).withExpiresAt(new Date(System.currentTimeMillis() + expiry))
                 .sign(Algorithm.HMAC512(secret.getBytes()));
 
     }
@@ -50,9 +49,9 @@ public class JTWTokenProvider {
         return userPasswordAuthToken;
     }
 
-    public boolean isTokenValid(String userName, String token) {
+    public boolean isTokenValid(String token) {
         JWTVerifier verifier = getJWTVerier();
-        return StringUtils.isNotEmpty(userName) && !isTokenExpired(verifier, token);
+        return !isTokenExpired(verifier, token);
     }
 
     private boolean isTokenExpired(JWTVerifier verifier, String token) {
@@ -63,6 +62,15 @@ public class JTWTokenProvider {
     public String getSubject(String token) {
         JWTVerifier verifier = getJWTVerier();
         return verifier.verify(token).getSubject();
+    }
+
+    public Authentication getAuthenticationToken(String token) {
+        String username = getSubject(token);
+        if (username != null && !username.isEmpty()) {
+            List<GrantedAuthority> authorities = getAuthorities(token);
+            return new UsernamePasswordAuthenticationToken(username, null, authorities);
+        }
+        return null;
     }
 
     private String[] getClaimsForUser(UserPrinciple userPrinciple) {

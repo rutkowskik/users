@@ -14,10 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import pl.krutkowski.users.domain.User;
-import pl.krutkowski.users.domain.UserPrinciple;
+import pl.krutkowski.users.entity.User;
 import pl.krutkowski.users.enumeration.Role;
 import pl.krutkowski.users.exception.domain.*;
+import pl.krutkowski.users.model.UserPrinciple;
+import pl.krutkowski.users.model.dto.UserResponseDto;
+import pl.krutkowski.users.mapper.UserMapper;
 import pl.krutkowski.users.repository.UserRepository;
 import pl.krutkowski.users.service.EmailService;
 import pl.krutkowski.users.service.LoginAttemptService;
@@ -32,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.springframework.http.MediaType.*;
@@ -50,6 +53,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
     private final EmailService emailService;
+    private final UserMapper userMapper;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -69,7 +73,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User registerUser(String firstName, String lastName, String username, String email) throws UserNotFoundException, EmailExistException, UsernameExistException, MessagingException {
+    public UserResponseDto registerUser(String firstName, String lastName, String username, String email) throws UserNotFoundException, EmailExistException, UsernameExistException, MessagingException {
+        //todo password define by user
         validateUsernameAndEmail(StringUtils.EMPTY, username, email);
         User user = new User();
         user.setUserId(generateUserId());
@@ -88,11 +93,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         user.setProfileImageUrl(getTemporaryImageUrl(username));
         userRepository.save(user);
         emailService.sendNewPasswordEmail(firstName, email, password);
-        return user;
+        return userMapper.toUserDto(user);
     }
 
     @Override
-    public User addUser(String firstName, String lastName, String username, String email, String role, boolean isNotLocked, boolean isActive, MultipartFile profileImage) throws UserNotFoundException, EmailExistException, UsernameExistException, IOException, MessagingException, NotAnImageFileException {
+    public UserResponseDto addUser(String firstName, String lastName, String username, String email, String role, boolean isNotLocked, boolean isActive, MultipartFile profileImage) throws UserNotFoundException, EmailExistException, UsernameExistException, IOException, MessagingException, NotAnImageFileException {
         validateUsernameAndEmail(StringUtils.EMPTY, username, email);
         User user = new User();
         String password = generatePassword();
@@ -112,11 +117,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         userRepository.save(user);
         saveProfileImage(user, profileImage);
         emailService.sendNewPasswordEmail(firstName, email, password);
-        return user;
+        return userMapper.toUserDto(user);
     }
 
     @Override
-    public User updateUser(String currentUsername, String newFirstName, String newLastName, String newUsername, String newEmail, String role, boolean isNotLocked, boolean isActive, MultipartFile profileImage) throws UserNotFoundException, EmailExistException, UsernameExistException, IOException, NotAnImageFileException {
+    public UserResponseDto updateUser(String currentUsername, String newFirstName, String newLastName, String newUsername, String newEmail, String role, boolean isNotLocked, boolean isActive, MultipartFile profileImage) throws UserNotFoundException, EmailExistException, UsernameExistException, IOException, NotAnImageFileException {
         User currentUser = validateUsernameAndEmail(currentUsername, newUsername, newEmail);
         currentUser.setFirstName(newFirstName);
         currentUser.setLastName(newLastName);
@@ -128,7 +133,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         currentUser.setAuthorities(getRoleEnumName(role).getAuthorities());
         saveProfileImage(currentUser, profileImage);
         userRepository.save(currentUser);
-        return currentUser;
+        return userMapper.toUserDto(currentUser);
     }
 
     @Override
@@ -159,10 +164,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User updateProfileImage(String username, MultipartFile profileImage) throws UserNotFoundException, EmailExistException, UsernameExistException, IOException, NotAnImageFileException {
+    public UserResponseDto updateProfileImage(String username, MultipartFile profileImage) throws UserNotFoundException, EmailExistException, UsernameExistException, IOException, NotAnImageFileException {
         User user = validateUsernameAndEmail(username, null, null);
         saveProfileImage(user, profileImage);
-        return user;
+        return user != null ? userMapper.toUserDto(user) : null;
     }
 
     private String getTemporaryImageUrl(String username) {
@@ -182,12 +187,17 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public List<User> getUsers() {
-        return userRepository.findAll();
+    public List<UserResponseDto> getUsers() {
+        return userRepository.findAll().stream().map(userMapper::toUserDto).collect(Collectors.toList());
     }
 
-    @Override
-    public User findUserUsername(String username) {
+//    @Override
+//    public UserResponseDto findUserByUsername(String username) {
+//        User user = userRepository.findUserByUsername(username);
+//        return userMapper.toUserDto(user);
+//    }
+
+    public User findUserByUsername(String username) {
         return userRepository.findUserByUsername(username);
     }
 
@@ -198,11 +208,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     private User validateUsernameAndEmail(String currentUsername, String newUsername, String newEmail) throws UsernameExistException, UserNotFoundException, EmailExistException {
         String msg;
-        User userNewByUsername = findUserUsername(newUsername);
+        User userNewByUsername = findUserByUsername(newUsername);
         User userNewByEmail = findUserByEmail(newEmail);
 
         if(!StringUtils.isBlank(currentUsername)) {
-            User currentUser = findUserUsername(currentUsername);
+            User currentUser = findUserByUsername(currentUsername);
             if(currentUser == null){
                 msg = String.format(USER_NOT_FOUND_BY_USERNAME, currentUsername);
                 log.error(msg);

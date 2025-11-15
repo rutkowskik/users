@@ -1,21 +1,90 @@
-jwt:
-  secret: 3ZpZuH8yU4vwf9bfbY+lF8gG9Kyj37xftmZEGzVuBBk=
-
-server:
-  port: 8081
+# ============================================
+# SPRING BOOT - BASE CONFIGURATION
+# Common settings for all profiles
+# ============================================
 
 spring:
   application:
-    name: users
-  datasource:
-    username: 'users_app'
-    url: jdbc:postgresql://localhost:5432/users
-    password: 'password1'
+    name: users-management-app
+  
+  # Active profile (override with environment variable or command line)
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  
+  # JPA/Hibernate common settings
   jpa:
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: 'true'
-    hibernate:
-      ddl-auto: update
-    show-sql: 'true'
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  # Redis common settings
+  data:
+    redis:
+      timeout: 60000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# Server common settings
+server:
+  port: ${SERVER_PORT:8081}
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+
+# JWT common settings
+jwt:
+  access-token:
+    expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000} # 15 minutes
+  refresh-token:
+    expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000} # 7 days
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging common settings
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB

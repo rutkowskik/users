@@ -1,15 +1,18 @@
-package pl.krutkowski.users.domain;
+package pl.krutkowski.users.model;
 
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import pl.krutkowski.users.entity.User;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.stream;
 
+@Data
 @RequiredArgsConstructor
 public class UserPrinciple implements UserDetails {
 

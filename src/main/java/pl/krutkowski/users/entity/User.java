@@ -1,4 +1,4 @@
-package pl.krutkowski.users.domain;
+package pl.krutkowski.users.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
