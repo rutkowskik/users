@@ -1,16 +1,18 @@
-# Compiled class file
+# ============================================
+# Wspolne
+# ============================================
+*.env
+*.DS_Store
+*.idea
+*.iml
+
+# ============================================
+# Backend (Java / Maven)
+# ============================================
 *.class
-
-# Log file
 *.log
-
-# BlueJ files
 *.ctxt
-
-# Mobile Tools for Java (J2ME)
 .mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -19,17 +21,33 @@
 *.tar.gz
 *.rar
 *.mvn
-*.idea
 **/target
-*.env
-*.DS_Store
-sercet.txt
-run-*
-k8s/secrets.yaml
-generate-secrets.sh
-src/main/java/pl/krutkowski/users/constant/EmailConstant.java
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
-/users.iml
+run-*
+sercet.txt
+backend/src/main/java/pl/krutkowski/users/constant/EmailConstant.java
+
+# ============================================
+# Frontend (Node / Angular)
+# ============================================
+node_modules/
+npm-debug.log
+yarn-error.log
+frontend/dist
+frontend/tmp
+frontend/out-tsc
+frontend/bazel-out
+frontend/.angular/cache
+.sass-cache/
+/connect.lock
+/coverage
+testem.log
+/typings
+.history/*
+
+# ============================================
+# Deployment - sekrety
+# ============================================
+k8s/secrets.yaml
+scripts/generate-secrets.sh
