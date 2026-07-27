@@ -1,0 +1,11 @@
+.badge-success{
+  background-color: #4CAF50;
+}
+
+.badge-danger{
+  background-color: #F44336;
+}
+
+.btn-radius {
+  border-radius: 0.375rem !important;
+}
