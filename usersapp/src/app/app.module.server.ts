@@ -4,12 +4,14 @@ import {HttpClientModule} from '@angular/common/http';
 
 import { AppModule } from './app.module';
 import { AppComponent } from './app.component';
+import {NoopAnimationsModule} from "@angular/platform-browser/animations";
 
 @NgModule({
   imports: [
     AppModule,
     ServerModule,
-    HttpClientModule
+    HttpClientModule,
+    NoopAnimationsModule,
   ],
   bootstrap: [AppComponent],
 })
