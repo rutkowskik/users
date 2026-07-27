@@ -4,7 +4,8 @@ REST API do zarzadzania uzytkownikami z uwierzytelnianiem opartym o JWT w cookie
 rotacja refresh tokenow z wykrywaniem ponownego uzycia (reuse detection) oraz sesjami
 przechowywanymi w Redis.
 
-Frontend (Angular) znajduje sie w osobnym repozytorium: [rutkowskik/usersapp](https://github.com/rutkowskik/usersapp).
+Modul `backend/` monorepo. Frontend (Angular) znajduje sie w [`frontend/`](../frontend/README.md),
+opis calosci wraz z architektura - w [README na poziomie repozytorium](../README.md).
 
 ---
 
@@ -174,7 +175,7 @@ SERVER_PORT                   # domyslnie 8081
 
 ## Uruchomienie lokalne
 
-Wymagania: JDK 17+, Maven, Docker.
+Wymagania: JDK 17+, Maven, Docker. Komendy uruchamiane z katalogu `backend/`.
 
 ```bash
 # 1. Redis
@@ -215,14 +216,14 @@ docker build -t users-backend:latest .
 docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod ... users-backend:latest
 ```
 
-Skrypt `scripts/build-and-push-backend.sh` buduje WAR, taguje obraz znacznikiem czasu
+Skrypt `../scripts/build-and-push-backend.sh` buduje WAR, taguje obraz znacznikiem czasu
 (`kacperroot/users-backend:YYYYMMDD-HHMMSS` + `latest`) i wypycha go do Docker Hub.
 
 ---
 
 ## Kubernetes
 
-Manifesty leza w `k8s/` i obejmuja **caly stack** - rowniez frontend, ktorego kod zyje w drugim repozytorium.
+Manifesty leza w `k8s/` na poziomie repozytorium i obejmuja **caly stack** - rowniez frontend.
 
 ```
 k8s/
@@ -238,16 +239,8 @@ k8s/
 └── frontend/frontend-hpa.yaml
 ```
 
-Skrypty pomocnicze w `scripts/`:
-
-| Skrypt | Rola |
-|---|---|
-| `build-and-push-backend.sh` | build Maven + Docker + push do rejestru |
-| `kubectl-apply.sh` | aplikuje manifesty w kolejnosci, czeka na gotowosc baz i rollout backendu |
-| `deploy.sh` | pelny pipeline deploymentu |
-| `health-check.sh` | status podow, serwisow i `/actuator/health` |
-| `logs.sh` | podglad logow z namespace |
-| `generate-secrets.sh` | generuje `k8s/secrets.yaml` (plik ignorowany przez git) |
+Skrypty pomocnicze leza w `scripts/` na poziomie repozytorium i licza sciezki wzgledem wlasnego
+polozenia, wiec mozna je uruchamiac z dowolnego katalogu - pelna lista w [README repozytorium](../README.md#skrypty).
 
 Dostep lokalny wymaga wpisu `users.local` w `/etc/hosts` wskazujacego na Ingress kontrolera.
 

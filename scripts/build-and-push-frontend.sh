@@ -4,10 +4,14 @@ set -e
 # Pobierz wersję z argumentu lub użyj znacznika czasu jako domyślnej wersji
 VERSION=${1:-$(date +%Y%m%d-%H%M%S)}
 IMAGE_NAME="kacperroot/users-frontend"
-FRONTEND_DIR="../usersapp"
+
+# Sciezki - liczone wzgledem polozenia skryptu, nie katalogu wywolania
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
+FRONTEND_DIR="${ROOT_DIR}/frontend"
 
 echo "🧱 Buduję Angular app..."
-cd $FRONTEND_DIR
+cd "${FRONTEND_DIR}"
 npm install --legacy-peer-deps
 npm run build -- --configuration=production
 

@@ -4,7 +4,8 @@ Panel zarzadzania uzytkownikami: logowanie, rejestracja, lista uzytkownikow, edy
 i usuwanie kont oraz upload avatara. Uwierzytelnianie oparte o cookies `HttpOnly` z automatycznym
 odswiezaniem tokena.
 
-Backend (Spring Boot) znajduje sie w osobnym repozytorium: [rutkowskik/users](https://github.com/rutkowskik/users).
+Modul `frontend/` monorepo. Backend (Spring Boot) znajduje sie w [`backend/`](../backend/README.md),
+opis calosci wraz z architektura - w [README na poziomie repozytorium](../README.md).
 
 ---
 
@@ -66,7 +67,7 @@ a przy jego braku pyta backend o `/user/me`. Flaga `checkingAuth` chroni przed r
 ## Struktura projektu
 
 ```
-usersapp/
+frontend/
 ├── src/app/
 │   ├── login/            ekran logowania
 │   ├── register/         rejestracja
@@ -86,12 +87,11 @@ usersapp/
 ├── server.ts             serwer Express dla SSR
 ├── nginx.conf            konfiguracja Nginx dla obrazu produkcyjnego
 ├── Dockerfile            build wieloetapowy
-├── docker-compose.yml
-└── deploy-frontend.sh    build + tagowanie + push do Docker Hub
+└── docker-compose.yml
 ```
 
-Plik `index2.html` w katalogu glownym repozytorium to niepowiazany, wolnostojacy landing page
-(RuKa Drone) - nie jest czescia aplikacji Angular.
+Skrypt budowania i publikacji obrazu lezy poza modulem, razem z odpowiednikiem backendowym:
+`scripts/build-and-push-frontend.sh`.
 
 ---
 
@@ -128,7 +128,7 @@ Bazowy URL pochodzi z `environment.apiUrl` (`/api/v1`).
 Wymagania: Node.js 20+, npm.
 
 ```bash
-cd usersapp
+cd frontend
 npm install --legacy-peer-deps
 npm start                 # ng serve -> http://localhost:4200
 ```
@@ -153,7 +153,7 @@ npm run serve:ssr:usersapp       # uruchomienie zbudowanego serwera SSR
 ## Docker
 
 ```bash
-cd usersapp
+cd frontend
 docker build -t users-frontend:latest .
 docker run -p 80:80 users-frontend:latest
 ```
@@ -166,7 +166,7 @@ a `nginx:1.25-alpine` serwuje zawartosc `dist/usersapp/browser`.
 - proxy `/api/` na `http://backend-service:8081` (nazwa uslugi w Kubernetes),
 - cache statykow (`ico|css|js|obrazy|fonty`) na 1 miesiac.
 
-Skrypt `deploy-frontend.sh` buduje aplikacje, taguje obraz znacznikiem czasu
+Skrypt `../scripts/build-and-push-frontend.sh` buduje aplikacje, taguje obraz znacznikiem czasu
 (`kacperroot/users-frontend:YYYYMMDD-HHMMSS` + `latest`) i wypycha go do Docker Hub.
 
 ---
@@ -174,7 +174,7 @@ Skrypt `deploy-frontend.sh` buduje aplikacje, taguje obraz znacznikiem czasu
 ## Deployment
 
 Manifesty Kubernetes dla frontendu (`Deployment` z 2 replikami, `Service frontend-service:80`, HPA)
-znajduja sie w repozytorium backendu w `k8s/frontend/`. Ingress kieruje `/api` do `backend-service`,
+leza w `k8s/frontend/` na poziomie repozytorium. Ingress kieruje `/api` do `backend-service`,
 a caly pozostaly ruch do `frontend-service` (obsluga routingu SPA).
 
 ---
