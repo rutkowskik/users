@@ -51,3 +51,8 @@ testem.log
 # ============================================
 k8s/secrets.yaml
 scripts/generate-secrets.sh
+
+# ============================================
+# Materialy niepowiazane z aplikacja
+# ============================================
+docs/index2.html

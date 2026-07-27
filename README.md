@@ -17,7 +17,6 @@ Repozytorium zawiera oba serwisy oraz wspolny opis wdrozenia.
 | `k8s/` | Manifesty Kubernetes calego stacku (namespace, config, bazy, oba serwisy, Ingress) | - |
 | `helm/` | Szkielet chartu Helm (obecnie pusty) | - |
 | `scripts/` | Skrypty build / deploy / diagnostyka | - |
-| `docs/` | Materialy dodatkowe, niepowiazane z aplikacja | - |
 
 ---
 
@@ -123,8 +122,7 @@ Sekrety (`k8s/secrets.yaml`) sa poza kontrola wersji - generuje je `scripts/gene
 │   ├── postgres/       postgres-statefulset.yaml
 │   └── redis/          redis-statefulset.yaml
 ├── helm/users-app/     szkielet chartu (pliki puste)
-├── scripts/            build, deploy, diagnostyka
-└── docs/               index2.html - wolnostojacy landing page, niepowiazany z aplikacja
+└── scripts/            build, deploy, diagnostyka
 ```
 
 ---
