@@ -1,131 +1,132 @@
 # Users App - Frontend (Angular)
 
-Panel zarzadzania uzytkownikami: logowanie, rejestracja, lista uzytkownikow, edycja, blokowanie
-i usuwanie kont oraz upload avatara. Uwierzytelnianie oparte o cookies `HttpOnly` z automatycznym
-odswiezaniem tokena.
+A user management panel: login, registration, user list, editing, locking and deleting accounts, and
+avatar upload. Authentication is based on `HttpOnly` cookies with automatic token refresh.
 
-Modul `frontend/` monorepo. Backend (Spring Boot) znajduje sie w [`backend/`](../backend/README.md),
-opis calosci wraz z architektura - w [README na poziomie repozytorium](../README.md).
+This is the `frontend/` module of the monorepo. The Spring Boot backend lives in
+[`backend/`](../backend/README.md); the overall description and architecture are in the
+[repository-level README](../README.md).
 
 ---
 
 ## Stack
 
-| Warstwa | Technologia |
+| Layer | Technology |
 |---|---|
-| Framework | Angular 17 (moduly NgModule, nie standalone) |
-| SSR | Angular SSR + Express (`server.ts`), prerendering wlaczony |
+| Framework | Angular 17 (NgModule-based, not standalone) |
+| SSR | Angular SSR + Express (`server.ts`), prerendering enabled |
 | UI | Bootstrap 5.3, Font Awesome 4.7 |
-| Powiadomienia | angular-notifier 14 |
+| Notifications | angular-notifier 14 |
 | HTTP | `HttpClient` + `AuthInterceptor`, `withCredentials: true` |
-| Jezyk | TypeScript 5.3, RxJS 7.8 |
-| Testy | Karma + Jasmine |
-| Serwowanie w produkcji | Nginx 1.25 (obraz wieloetapowy: `node:20-alpine` -> `nginx:1.25-alpine`) |
+| Language | TypeScript 5.3, RxJS 7.8 |
+| Tests | Karma + Jasmine |
+| Production serving | Nginx 1.25 (multi-stage image: `node:20-alpine` -> `nginx:1.25-alpine`) |
 
 ---
 
-## Uwierzytelnianie
+## Authentication
 
-Aplikacja **nie przechowuje tokenow** - tokeny `ACCESS_TOKEN` i `REFRESH_TOKEN` sa cookies `HttpOnly`
-ustawianymi przez backend i niedostepnymi z poziomu JavaScriptu. W `localStorage` trzymany jest wylacznie
-cache profilu uzytkownika (klucz `user`) i listy uzytkownikow (`users`) - dane pomocnicze, nie poswiadczenia.
+The application **stores no tokens** - `ACCESS_TOKEN` and `REFRESH_TOKEN` are `HttpOnly` cookies set
+by the backend and unreachable from JavaScript. `localStorage` only holds a cache of the user profile
+(key `user`) and of the user list (`users`) - convenience data, not credentials.
 
 ### `AuthInterceptor`
 
-- Do kazdego zadania dokleja `withCredentials: true`, zeby cookies wedrowaly z zapytaniem.
-- Endpointy publiczne (`/user/login`, `/user/logout`, `/user/register`, `/user/me`, `/user/refresh`)
-  przepuszcza bez logiki ponawiania.
-- Na odpowiedz `401` wykonuje jednokrotny `POST /user/refresh` (flaga `isRefreshing` zapobiega petli),
-  a po udanej rotacji tokenow **ponawia oryginalne zadanie**. Gdy refresh sie nie powiedzie, przekierowuje
-  na `/login`.
+- Adds `withCredentials: true` to every request so the cookies travel with it.
+- Lets public endpoints (`/user/login`, `/user/logout`, `/user/register`, `/user/me`, `/user/refresh`)
+  through without any retry logic.
+- On a `401` response it issues a single `POST /user/refresh` (the `isRefreshing` flag prevents a loop)
+  and, once rotation succeeds, **retries the original request**. If the refresh fails it redirects
+  to `/login`.
 
-### Guardy
+### Guards
 
-| Guard | Chroni | Zachowanie |
+| Guard | Protects | Behaviour |
 |---|---|---|
-| `AuthenticationGuard` | `/user/management` | Weryfikuje sesje przez `GET /user/me`; przy braku sesji przekierowuje na `/login` z `returnUrl` i pokazuje powiadomienie |
-| `LoginGuard` | `/login`, `/register` | Zalogowanego uzytkownika przekierowuje od razu na `/user/management` |
+| `AuthenticationGuard` | `/user/management` | Verifies the session via `GET /user/me`; with no session redirects to `/login` with a `returnUrl` and shows a notification |
+| `LoginGuard` | `/login`, `/register` | Redirects an already authenticated user straight to `/user/management` |
 
-`AuthenticationService.isLoggedIn()` zwraca `Observable<boolean>` - najpierw sprawdza cache w pamieci,
-a przy jego braku pyta backend o `/user/me`. Flaga `checkingAuth` chroni przed rownoleglymi zapytaniami.
+`AuthenticationService.isLoggedIn()` returns an `Observable<boolean>` - it checks the in-memory cache
+first and falls back to asking the backend for `/user/me`. The `checkingAuth` flag guards against
+concurrent requests.
 
 ---
 
 ## Routing
 
-| Sciezka | Komponent | Guard |
+| Path | Component | Guard |
 |---|---|---|
 | `/login` | `LoginComponent` | `LoginGuard` |
 | `/register` | `RegisterComponent` | `LoginGuard` |
 | `/user/management` | `UserComponent` | `AuthenticationGuard` |
-| `/` | przekierowanie na `/login` | - |
+| `/` | redirects to `/login` | - |
 | `/not-found` | `NotFoundComponent` | - |
-| `**` | przekierowanie na `/not-found` | - |
+| `**` | redirects to `/not-found` | - |
 
 ---
 
-## Struktura projektu
+## Project structure
 
 ```
 frontend/
 ├── src/app/
-│   ├── login/            ekran logowania
-│   ├── register/         rejestracja
-│   ├── user/             panel zarzadzania uzytkownikami (lista, modale, upload avatara)
-│   ├── not-found/        strona 404
+│   ├── login/            login screen
+│   ├── register/         registration
+│   ├── user/             user management panel (list, modals, avatar upload)
+│   ├── not-found/        404 page
 │   ├── common/
 │   │   └── loading-spinner/
 │   ├── guard/            AuthenticationGuard, LoginGuard
-│   ├── interceptor/      AuthInterceptor (withCredentials + refresh na 401)
+│   ├── interceptor/      AuthInterceptor (withCredentials + refresh on 401)
 │   ├── service/          AuthenticationService, UserService, NotificationService
 │   ├── model/            User, CustomHttpResponse, FileUploadStatus
 │   ├── enum/             Role, HeaderType, NotificationType
 │   ├── app-routing.module.ts
 │   ├── app.module.ts
 │   └── app.module.server.ts
-├── src/environments/     environment.ts (dev), environment.prod.ts (produkcja)
-├── server.ts             serwer Express dla SSR
-├── nginx.conf            konfiguracja Nginx dla obrazu produkcyjnego
-├── Dockerfile            build wieloetapowy
+├── src/environments/     environment.ts (dev), environment.prod.ts (production)
+├── server.ts             Express server for SSR
+├── nginx.conf            Nginx configuration for the production image
+├── Dockerfile            multi-stage build
 └── docker-compose.yml
 ```
 
-Skrypt budowania i publikacji obrazu lezy poza modulem, razem z odpowiednikiem backendowym:
+The image build-and-publish script lives outside this module, next to its backend counterpart:
 `scripts/build-and-push-frontend.sh`.
 
 ---
 
-## Uzywane endpointy backendu
+## Backend endpoints used
 
-Bazowy URL pochodzi z `environment.apiUrl` (`/api/v1`).
+The base URL comes from `environment.apiUrl` (`/api/v1`).
 
-| Metoda | Endpoint | Uzycie |
+| Method | Endpoint | Usage |
 |---|---|---|
-| POST | `/user/login` | logowanie, backend ustawia cookies |
-| POST | `/user/register` | rejestracja |
-| POST | `/user/logout` | wylogowanie i wyczyszczenie cookies |
-| POST | `/user/refresh` | rotacja tokenow (wywolywana przez interceptor) |
-| GET | `/user/me` | weryfikacja sesji przez guardy |
-| GET | `/user/list` | lista uzytkownikow |
-| POST | `/user/add`, `/user/update` | dodanie / edycja uzytkownika (`FormData`) |
-| POST | `/user/updateProfileImage` | upload avatara z raportowaniem postepu |
-| DELETE | `/user/delete/{username}` | usuniecie uzytkownika |
-| GET | `/user/resertpassword/{email}` | reset hasla |
+| POST | `/user/login` | login; the backend sets the cookies |
+| POST | `/user/register` | registration |
+| POST | `/user/logout` | log out and clear the cookies |
+| POST | `/user/refresh` | token rotation (issued by the interceptor) |
+| GET | `/user/me` | session check performed by the guards |
+| GET | `/user/list` | user list |
+| POST | `/user/add`, `/user/update` | create / edit a user (`FormData`) |
+| POST | `/user/updateProfileImage` | avatar upload with progress reporting |
+| DELETE | `/user/delete/{username}` | delete a user |
+| GET | `/user/resertpassword/{email}` | password reset |
 
 ---
 
-## Konfiguracja srodowisk
+## Environment configuration
 
-| Plik | `apiUrl` | Uzycie |
+| File | `apiUrl` | Used by |
 |---|---|---|
-| `src/environments/environment.ts` | `http://backend:8081/api/v1` | build deweloperski |
-| `src/environments/environment.prod.ts` | `http://users.local/api/v1` | build produkcyjny (podmieniany przez `fileReplacements` w `angular.json`) |
+| `src/environments/environment.ts` | `http://backend:8081/api/v1` | development build |
+| `src/environments/environment.prod.ts` | `http://users.local/api/v1` | production build (swapped in via `fileReplacements` in `angular.json`) |
 
 ---
 
-## Uruchomienie lokalne
+## Running locally
 
-Wymagania: Node.js 20+, npm.
+Requirements: Node.js 20+, npm.
 
 ```bash
 cd frontend
@@ -133,19 +134,19 @@ npm install --legacy-peer-deps
 npm start                 # ng serve -> http://localhost:4200
 ```
 
-Backend musi dzialac rownolegle. Profil `local` backendu dopuszcza w CORS origin `http://localhost:4200`
-wraz z `allow-credentials: true` - bez tego cookies nie zostana zapisane przez przegladarke.
+The backend must be running alongside. Its `local` profile allows the `http://localhost:4200` origin
+with `allow-credentials: true` - without that the browser will not store the cookies.
 
-Uwaga: przy `ng serve` `apiUrl` pochodzi z `environment.ts` i wskazuje na host `backend`.
-Do pracy na czystym localhoscie ustaw tam `http://localhost:8081/api/v1`.
+Note: under `ng serve` the `apiUrl` comes from `environment.ts` and points at the host `backend`.
+To work on plain localhost, set it to `http://localhost:8081/api/v1`.
 
-### Pozostale komendy
+### Other commands
 
 ```bash
-npm run build                    # build produkcyjny do dist/usersapp
-npm run watch                    # build w trybie watch (konfiguracja development)
+npm run build                    # production build into dist/usersapp
+npm run watch                    # watch-mode build (development configuration)
 npm test                         # Karma + Jasmine
-npm run serve:ssr:usersapp       # uruchomienie zbudowanego serwera SSR
+npm run serve:ssr:usersapp       # run the built SSR server
 ```
 
 ---
@@ -158,33 +159,33 @@ docker build -t users-frontend:latest .
 docker run -p 80:80 users-frontend:latest
 ```
 
-Obraz jest budowany dwuetapowo: `node:20-alpine` buduje aplikacje w konfiguracji produkcyjnej,
-a `nginx:1.25-alpine` serwuje zawartosc `dist/usersapp/browser`.
+The image is built in two stages: `node:20-alpine` builds the application in the production
+configuration, and `nginx:1.25-alpine` serves the contents of `dist/usersapp/browser`.
 
-`nginx.conf` zapewnia:
-- fallback SPA (`try_files $uri $uri/ /index.html`),
-- proxy `/api/` na `http://backend-service:8081` (nazwa uslugi w Kubernetes),
-- cache statykow (`ico|css|js|obrazy|fonty`) na 1 miesiac.
+`nginx.conf` provides:
+- the SPA fallback (`try_files $uri $uri/ /index.html`),
+- a proxy from `/api/` to `http://backend-service:8081` (the Kubernetes service name),
+- static asset caching (`ico|css|js|images|fonts`) for one month.
 
-Skrypt `../scripts/build-and-push-frontend.sh` buduje aplikacje, taguje obraz znacznikiem czasu
-(`kacperroot/users-frontend:YYYYMMDD-HHMMSS` + `latest`) i wypycha go do Docker Hub.
+`../scripts/build-and-push-frontend.sh` builds the application, tags the image with a timestamp
+(`kacperroot/users-frontend:YYYYMMDD-HHMMSS` plus `latest`) and pushes it to Docker Hub.
 
 ---
 
 ## Deployment
 
-Manifesty Kubernetes dla frontendu (`Deployment` z 2 replikami, `Service frontend-service:80`, HPA)
-leza w `k8s/frontend/` na poziomie repozytorium. Ingress kieruje `/api` do `backend-service`,
-a caly pozostaly ruch do `frontend-service` (obsluga routingu SPA).
+The Kubernetes manifests for the frontend (a `Deployment` with 2 replicas, `Service
+frontend-service:80`, an HPA) live in `k8s/frontend/` at the repository root. The Ingress routes
+`/api` to `backend-service` and all remaining traffic to `frontend-service`, which handles SPA routing.
 
 ---
 
-## Znane ograniczenia i plan
+## Known limitations and roadmap
 
-- `environment.ts` (dev) wskazuje na host `backend`, co nie dziala przy `ng serve` bez proxy
-  lub wpisu w `/etc/hosts`.
-- `UserService.deleteUser()` operuje na `username` zamiast na `userId` (komentarz `todo` w kodzie).
-- Brak testow jednostkowych - konfiguracja Karma/Jasmine jest gotowa, ale specyfikacje nie zostaly napisane.
-- Brak paginacji i sortowania listy uzytkownikow (wymaga rowniez zmian po stronie backendu).
-- Widok aktywnych sesji i wylogowania ze wszystkich urzadzen nie jest jeszcze wystawiony w UI,
-  mimo ze backend udostepnia `GET /user/sessions`, `DELETE /user/session/{id}` i `POST /user/logout-all`.
+- `environment.ts` (dev) points at the host `backend`, which does not work under `ng serve` without
+  a proxy or an `/etc/hosts` entry.
+- `UserService.deleteUser()` operates on `username` rather than `userId` (see the `todo` in the code).
+- No unit tests - the Karma/Jasmine setup is in place, but no specs have been written.
+- No pagination or sorting on the user list (also requires backend changes).
+- The active-sessions view and "log out everywhere" are not exposed in the UI yet, even though the
+  backend provides `GET /user/sessions`, `DELETE /user/session/{id}` and `POST /user/logout-all`.

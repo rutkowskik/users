@@ -1,83 +1,84 @@
 # Users - Backend (Spring Boot)
 
-REST API do zarzadzania uzytkownikami z uwierzytelnianiem opartym o JWT w cookies HttpOnly,
-rotacja refresh tokenow z wykrywaniem ponownego uzycia (reuse detection) oraz sesjami
-przechowywanymi w Redis.
+A REST API for user management with authentication based on JWTs delivered as `HttpOnly` cookies,
+refresh token rotation with reuse detection, and sessions stored in Redis.
 
-Modul `backend/` monorepo. Frontend (Angular) znajduje sie w [`frontend/`](../frontend/README.md),
-opis calosci wraz z architektura - w [README na poziomie repozytorium](../README.md).
+This is the `backend/` module of the monorepo. The Angular frontend lives in
+[`frontend/`](../frontend/README.md); the overall description and architecture are in the
+[repository-level README](../README.md).
 
 ---
 
 ## Stack
 
-| Warstwa | Technologia |
+| Layer | Technology |
 |---|---|
-| Jezyk / runtime | Java 17, pakowanie do WAR (`users_app.war`), obraz Docker na `eclipse-temurin:21` |
+| Language / runtime | Java 17, packaged as a WAR (`users_app.war`), Docker image on `eclipse-temurin:21` |
 | Framework | Spring Boot 3.5.3 (Web, Security, Data JPA, Data Redis, Actuator) |
-| Baza danych | PostgreSQL (Hibernate, HikariCP) |
-| Cache / sesje | Redis 7 (Lettuce) |
-| Tokeny | `com.auth0:java-jwt` 4.5.0 |
-| Metryki | Micrometer + Prometheus |
-| Pozostale | Lombok, Guava (cache prob logowania), javax.mail, Commons Codec (SHA-256) |
-| Deployment | Docker, Kubernetes (namespace `users-app`), Ingress NGINX |
+| Database | PostgreSQL (Hibernate, HikariCP) |
+| Cache / sessions | Redis 7 (Lettuce) |
+| Tokens | `com.auth0:java-jwt` 4.5.0 |
+| Metrics | Micrometer + Prometheus |
+| Other | Lombok, Guava (login attempt cache), javax.mail, Commons Codec (SHA-256) |
+| Deployment | Docker, Kubernetes (namespace `users-app`), NGINX Ingress |
 
 ---
 
-## Model uwierzytelniania
+## Authentication model
 
-Tokeny **nie trafiaja do LocalStorage** - sa wydawane jako cookies `HttpOnly` + `SameSite=Strict`:
+Tokens **never reach LocalStorage** - they are issued as `HttpOnly` + `SameSite=Strict` cookies:
 
-| Cookie | TTL (domyslnie) | Zrodlo prawdy |
+| Cookie | TTL (default) | Source of truth |
 |---|---|---|
-| `ACCESS_TOKEN` | 15 min (`JWT_ACCESS_TOKEN_EXPIRATION`) | wylacznie podpis JWT |
-| `REFRESH_TOKEN` | 7 dni (`JWT_REFRESH_TOKEN_EXPIRATION`) | JWT + wpis w Redis |
+| `ACCESS_TOKEN` | 15 min (`JWT_ACCESS_TOKEN_EXPIRATION`) | the JWT signature alone |
+| `REFRESH_TOKEN` | 7 days (`JWT_REFRESH_TOKEN_EXPIRATION`) | the JWT plus a Redis entry |
 
-### Przeplyw
+### Flow
 
-1. **Login** (`POST /api/v1/user/login`) - `AuthenticationManager` weryfikuje haslo (BCrypt),
-   `TokenServiceImpl` generuje oba tokeny, zapisuje metadane refresh tokena w Redis i ustawia cookies.
-2. **Autoryzacja zadania** - `JWTAuthorizationFilter` czyta `ACCESS_TOKEN` z cookie, waliduje podpis
-   i wypelnia `SecurityContextHolder`. Brak / nieprawidlowy token konczy sie `401` bez wchodzenia dalej w lancuch.
-3. **Refresh** (`POST /api/v1/user/refresh`) - stary refresh token jest **uniewazniany i wymieniany**
-   (token rotation). Nowa para trafia do cookies.
-4. **Reuse detection** - kazdy refresh token nalezy do `tokenFamily` (UUID). Proba uzycia tokena, ktory
-   zostal juz uniewazniony, powoduje uniewaznienie **calej rodziny** i rzucenie `TokenReusedException`,
-   czyli wylogowanie ze wszystkich urzadzen zbudowanych na tym lancuchu rotacji.
+1. **Login** (`POST /api/v1/user/login`) - `AuthenticationManager` verifies the password (BCrypt),
+   `TokenServiceImpl` generates both tokens, stores the refresh token metadata in Redis and sets the cookies.
+2. **Request authorization** - `JWTAuthorizationFilter` reads `ACCESS_TOKEN` from the cookie, validates
+   the signature and populates `SecurityContextHolder`. A missing or invalid token results in `401`
+   without continuing down the filter chain.
+3. **Refresh** (`POST /api/v1/user/refresh`) - the old refresh token is **revoked and replaced**
+   (token rotation). The new pair is written to the cookies.
+4. **Reuse detection** - every refresh token belongs to a `tokenFamily` (UUID). Attempting to use a
+   token that has already been revoked revokes the **entire family** and raises `TokenReusedException`,
+   logging the user out of every device built on that rotation chain.
 
-### Struktura kluczy w Redis
+### Redis key layout
 
 ```
-refresh_token:<sha256>   -> RefreshTokenData (JSON, TTL = TTL refresh tokena)
-user_tokens:<username>   -> SET hashy tokenow  (obsluga "logout all devices")
-token_family:<uuid>      -> SET hashy tokenow  (obsluga reuse detection)
-revoked_token:<sha256>   -> marker uniewaznienia (TTL 1h)
-revoked_info:<sha256>    -> RefreshTokenData uniewaznionego tokena (TTL 24h)
-refresh_rate:<username>  -> licznik rate limitu (TTL 1 min)
+refresh_token:<sha256>   -> RefreshTokenData (JSON, TTL = refresh token TTL)
+user_tokens:<username>   -> SET of token hashes  (powers "logout all devices")
+token_family:<uuid>      -> SET of token hashes  (powers reuse detection)
+revoked_token:<sha256>   -> revocation marker (TTL 1h)
+revoked_info:<sha256>    -> RefreshTokenData of the revoked token (TTL 24h)
+refresh_rate:<username>  -> rate limit counter (TTL 1 min)
 ```
 
-Same tokeny nigdy nie trafiaja do Redis - przechowywany jest wylacznie ich hash SHA-256.
+The tokens themselves are never written to Redis - only their SHA-256 hashes.
 
-### Ochrona przed nadużyciami
+### Abuse protection
 
-- `LoginAttemptService` - cache Guava, 5 nieudanych prob logowania / 15 min blokuje konto
-  (obslugiwany przez `AuthenticationFailureListener` / `AuthenticationSuccessListener`).
-- `RedisRateLimiterService` - maks. 10 odswiezen tokena na minute na uzytkownika.
+- `LoginAttemptService` - a Guava cache; 5 failed login attempts within 15 minutes lock the account
+  (driven by `AuthenticationFailureListener` / `AuthenticationSuccessListener`).
+- `RedisRateLimiterService` - at most 10 token refreshes per minute per user.
 
 ---
 
-## Role i uprawnienia
+## Roles and authorities
 
-Role sa mapowane na liste uprawnien (`pl.krutkowski.users.constant.Authorities`), a endpointy chronione
-adnotacja `@PreAuthorize` na poziomie uprawnienia, nie roli.
+Roles map to a list of authorities (`pl.krutkowski.users.constant.Authorities`), and endpoints are
+guarded with `@PreAuthorize` at the authority level rather than the role level.
 
-| Rola | Uprawnienia |
+| Role | Authorities |
 |---|---|
 | `ROLE_USER` | `user:read` |
 | `ROLE_HR` | `user:read`, `user:update` |
 | `ROLE_MANAGER` | `user:read`, `user:update` |
 | `ROLE_ADMIN` | `user:read`, `user:create`, `user:update` |
-| `ROLE_SUPER_ADMIN` | wszystkie + `user:delete`, `app:monitoring` |
+| `ROLE_SUPER_ADMIN` | all of the above plus `user:delete`, `app:monitoring` |
 
 ---
 
@@ -85,48 +86,48 @@ adnotacja `@PreAuthorize` na poziomie uprawnienia, nie roli.
 
 Base path: `/api/v1/user`
 
-### Uwierzytelnianie i sesje
+### Authentication and sessions
 
-| Metoda | Sciezka | Dostep | Opis |
+| Method | Path | Access | Description |
 |---|---|---|---|
-| POST | `/login` | publiczny | Logowanie, ustawia cookies z tokenami |
-| POST | `/register` | publiczny | Rejestracja, haslo generowane i wysylane mailem |
-| POST | `/refresh` | publiczny (cookie) | Rotacja tokenow, `401` przy reuse |
-| POST | `/logout` | publiczny (cookie) | Uniewaznia refresh token i czysci cookies |
-| POST | `/logout-all` | zalogowany | Uniewaznia wszystkie sesje uzytkownika |
-| GET | `/me` | zalogowany | Dane aktualnie zalogowanego uzytkownika |
-| GET | `/sessions` | zalogowany | Lista aktywnych sesji (IP, User-Agent, znacznik biezacej) |
-| DELETE | `/session/{sessionId}` | zalogowany | Uniewaznia wskazana sesje (`sessionId` = 8 znakow hasha) |
+| POST | `/login` | public | Log in, sets the token cookies |
+| POST | `/register` | public | Register; the password is generated and emailed |
+| POST | `/refresh` | public (cookie) | Token rotation, `401` on reuse |
+| POST | `/logout` | public (cookie) | Revokes the refresh token and clears the cookies |
+| POST | `/logout-all` | authenticated | Revokes every session of the user |
+| GET | `/me` | authenticated | Details of the currently authenticated user |
+| GET | `/sessions` | authenticated | Active sessions (IP, User-Agent, current-session flag) |
+| DELETE | `/session/{sessionId}` | authenticated | Revokes one session (`sessionId` = first 8 hash chars) |
 
-### Zarzadzanie uzytkownikami
+### User management
 
-| Metoda | Sciezka | Dostep | Opis |
+| Method | Path | Access | Description |
 |---|---|---|---|
-| GET | `/list` | zalogowany | Lista uzytkownikow |
-| GET | `/find/{username}` | zalogowany | Szczegoly uzytkownika |
-| POST | `/add` | zalogowany | Dodanie uzytkownika (multipart, opcjonalny avatar) |
-| POST | `/update` | zalogowany | Aktualizacja uzytkownika (multipart) |
-| DELETE | `/delete/{username}` | `user:delete` | Usuniecie uzytkownika |
-| GET | `/resertpassword/{email}` | zalogowany | Reset hasla, nowe haslo wysylane mailem |
-| POST | `/updateProfileImage` | zalogowany | Podmiana avatara |
-| GET | `/image/{username}/{filename}` | publiczny | Avatar z dysku |
-| GET | `/image/profile/{username}` | publiczny | Avatar zastepczy (Robohash) |
+| GET | `/list` | authenticated | List users |
+| GET | `/find/{username}` | authenticated | User details |
+| POST | `/add` | authenticated | Create a user (multipart, optional avatar) |
+| POST | `/update` | authenticated | Update a user (multipart) |
+| DELETE | `/delete/{username}` | `user:delete` | Delete a user |
+| GET | `/resertpassword/{email}` | authenticated | Reset the password; the new one is emailed |
+| POST | `/updateProfileImage` | authenticated | Replace the avatar |
+| GET | `/image/{username}/{filename}` | public | Avatar from disk |
+| GET | `/image/profile/{username}` | public | Fallback avatar (Robohash) |
 
 ### Monitoring
 
-| Metoda | Sciezka | Dostep | Opis |
+| Method | Path | Access | Description |
 |---|---|---|---|
-| GET | `/admin/token-stats` | `app:monitoring` | Liczba aktywnych tokenow, uzytkownikow, rodzin, uniewaznien |
-| GET | `/admin/top-active-users` | `app:monitoring` | Uzytkownicy z najwieksza liczba sesji (`?limit=10`) |
-| GET | `/actuator/health`, `/actuator/prometheus` | zaleznie od profilu | Health probes i metryki |
+| GET | `/admin/token-stats` | `app:monitoring` | Counts of active tokens, users, families and revocations |
+| GET | `/admin/top-active-users` | `app:monitoring` | Users with the most sessions (`?limit=10`) |
+| GET | `/actuator/health`, `/actuator/prometheus` | profile dependent | Health probes and metrics |
 
-Bledy domenowe (`UserNotFoundException`, `EmailExistException`, `UsernameExistException`,
+Domain errors (`UserNotFoundException`, `EmailExistException`, `UsernameExistException`,
 `NotAnImageFileException`, `RateLimitException`, `InvalidTokenException`, `TokenReusedException`)
-sa mapowane centralnie w `ExceptionHandling`.
+are mapped centrally in `ExceptionHandling`.
 
 ---
 
-## Struktura projektu
+## Project structure
 
 ```
 src/main/java/pl/krutkowski/users/
@@ -135,11 +136,11 @@ src/main/java/pl/krutkowski/users/
 ├── controller/      UserController, StatisticController
 ├── entity/          User (JPA), RefreshTokenData (Redis)
 ├── enumeration/     Role
-├── exception/       ExceptionHandling + wyjatki domenowe
+├── exception/       ExceptionHandling + domain exceptions
 ├── filter/          JWTAuthorizationFilter, JwtAccessDeniedHandler, JwtAccessForbiddenEntryPoint
 ├── listener/        AuthenticationSuccessListener, AuthenticationFailureListener
 ├── mapper/          UserMapper
-├── model/           DTO, UserPrinciple, HttpResponse, SessionInfo, TokenStats
+├── model/           DTOs, UserPrinciple, HttpResponse, SessionInfo, TokenStats
 ├── repository/      UserRepository
 ├── service/         UserService, TokenService, RedisTokenService, RedisRateLimiterService,
 │                    TokenMetricsService, LoginAttemptService, EmailService
@@ -148,63 +149,64 @@ src/main/java/pl/krutkowski/users/
 
 ---
 
-## Profile konfiguracyjne
+## Configuration profiles
 
-| Profil | Plik | Charakterystyka |
+| Profile | File | Characteristics |
 |---|---|---|
-| `local` | `application-local.yml` | PostgreSQL i Redis na localhost, `ddl-auto: update`, pelne logi SQL i Security, wszystkie endpointy Actuatora, CORS na `localhost:4200` |
-| `test` | `application-test.yml` | Srodowisko staging, `ddl-auto: validate`, sekrety z ENV |
-| `prod` | `application-prod.yml` | `ddl-auto: validate`, ukryte stacktrace, logi na poziomie WARN, wszystkie sekrety z ENV, pula Hikari 20 polaczen |
+| `local` | `application-local.yml` | PostgreSQL and Redis on localhost, `ddl-auto: update`, verbose SQL and Security logs, all Actuator endpoints, CORS for `localhost:4200` |
+| `test` | `application-test.yml` | Staging environment, `ddl-auto: validate`, secrets from ENV |
+| `prod` | `application-prod.yml` | `ddl-auto: validate`, stack traces hidden, WARN-level logging, all secrets from ENV, Hikari pool of 20 connections |
 
-Profil wybiera `SPRING_PROFILES_ACTIVE` (domyslnie `local`).
+The profile is selected by `SPRING_PROFILES_ACTIVE` (defaults to `local`).
 
-### Zmienne srodowiskowe (`test` / `prod`)
+### Environment variables (`test` / `prod`)
 
 ```
 SPRING_DATASOURCE_URL
 SPRING_DATASOURCE_USERNAME
 SPRING_DATASOURCE_PASSWORD
 SPRING_DATA_REDIS_HOST
-SPRING_DATA_REDIS_PORT        # domyslnie 6379
-JWT_SECRET                    # wymagane, bez wartosci domyslnej
+SPRING_DATA_REDIS_PORT        # defaults to 6379
+JWT_SECRET                    # required, no default
 CORS_ALLOWED_ORIGINS
-SERVER_PORT                   # domyslnie 8081
+SERVER_PORT                   # defaults to 8081
 ```
 
 ---
 
-## Uruchomienie lokalne
+## Running locally
 
-Wymagania: JDK 17+, Maven, Docker. Komendy uruchamiane z katalogu `backend/`.
+Requirements: JDK 17+, Maven, Docker. Commands are run from the `backend/` directory.
 
 ```bash
 # 1. Redis
 docker compose -f REDIS_DOCKER/docker-compose.yml up -d
 
-# 2. PostgreSQL - baza `users`, uzytkownik `users_app` / `password1`
-#    (zgodnie z application-local.yml)
+# 2. PostgreSQL - database `users`, user `users_app` / `password1`
+#    (as configured in application-local.yml)
 
-# 3. Aplikacja
-./run-local.sh          # albo: mvn spring-boot:run -Dspring-boot.run.profiles=local
+# 3. Application
+./run-local.sh          # or: mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 API: `http://localhost:8081`, Actuator: `http://localhost:8081/actuator`.
 
-Frontend uruchomiony przez `ng serve` na `http://localhost:4200` jest dopuszczony w CORS profilu `local`.
+A frontend served by `ng serve` on `http://localhost:4200` is allowed by the CORS settings of the
+`local` profile.
 
-Pozostale skrypty startowe: `run-test.sh`, `run-prod.sh` (oba walidują wymagane zmienne środowiskowe
-przed startem i przerywaja prace, gdy ktorejs brakuje).
+Other startup scripts: `run-test.sh`, `run-prod.sh` (both validate the required environment variables
+before starting and abort if any are missing).
 
 ---
 
-## Testy
+## Tests
 
 ```bash
 mvn test
 ```
 
-`TokenServiceIntegrationTest` (`src/test/java/redis/`) pokrywa rotacje tokenow i reuse detection
-w oparciu o `RedisTestConfiguration`.
+`TokenServiceIntegrationTest` (`src/test/java/redis/`) covers token rotation and reuse detection,
+backed by `RedisTestConfiguration`.
 
 ---
 
@@ -216,43 +218,44 @@ docker build -t users-backend:latest .
 docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod ... users-backend:latest
 ```
 
-Skrypt `../scripts/build-and-push-backend.sh` buduje WAR, taguje obraz znacznikiem czasu
-(`kacperroot/users-backend:YYYYMMDD-HHMMSS` + `latest`) i wypycha go do Docker Hub.
+`../scripts/build-and-push-backend.sh` builds the WAR, tags the image with a timestamp
+(`kacperroot/users-backend:YYYYMMDD-HHMMSS` plus `latest`) and pushes it to Docker Hub.
 
 ---
 
 ## Kubernetes
 
-Manifesty leza w `k8s/` na poziomie repozytorium i obejmuja **caly stack** - rowniez frontend.
+The manifests live in `k8s/` at the repository root and cover the **whole stack**, the frontend included.
 
 ```
 k8s/
 ├── namespace.yaml                       namespace users-app
-├── configmap.yaml                       konfiguracja nie-wrazliwa
-├── secrets.yaml                         sekrety (poza gitem)
-├── ingress.yaml                         host users.local, /api -> backend, reszta -> frontend (SPA)
+├── configmap.yaml                       non-sensitive configuration
+├── secrets.yaml                         secrets (kept out of git)
+├── ingress.yaml                         host users.local, /api -> backend, rest -> frontend (SPA)
 ├── postgres/postgres-statefulset.yaml
 ├── redis/redis-statefulset.yaml
-├── backend/backend-deployment.yaml      Deployment (2 repliki) + Service backend-service:8081
+├── backend/backend-deployment.yaml      Deployment (2 replicas) + Service backend-service:8081
 ├── backend/backend-hpa.yaml
-├── frontend/frontend-deployment.yaml    Deployment (2 repliki) + Service frontend-service:80
+├── frontend/frontend-deployment.yaml    Deployment (2 replicas) + Service frontend-service:80
 └── frontend/frontend-hpa.yaml
 ```
 
-Skrypty pomocnicze leza w `scripts/` na poziomie repozytorium i licza sciezki wzgledem wlasnego
-polozenia, wiec mozna je uruchamiac z dowolnego katalogu - pelna lista w [README repozytorium](../README.md#skrypty).
+The helper scripts live in `scripts/` at the repository root and resolve paths relative to their own
+location, so they can be run from any directory - see the full list in the
+[repository README](../README.md#scripts).
 
-Dostep lokalny wymaga wpisu `users.local` w `/etc/hosts` wskazujacego na Ingress kontrolera.
+Local access requires a `users.local` entry in `/etc/hosts` pointing at the Ingress controller.
 
 ---
 
-## Znane ograniczenia i plan
+## Known limitations and roadmap
 
-- `SecurityConfiguration.corsConfiguration()` ma dozwolone origin zaszyte w kodzie
-  (`http://localhost:4200/`) i ignoruje odczytane wlasciwosci `cors.*` z profili - do ujednolicenia.
-- `cookie.setSecure(true)` jest zakomentowane w `TokenServiceImpl` - wymagane przed wystawieniem na HTTPS.
-- `k8s/configmap.yaml` ustawia `SPRING_REDIS_PORT`, podczas gdy aplikacja czyta `SPRING_DATA_REDIS_PORT`.
-- Avatary zapisywane sa na lokalnym dysku poda (`FileConstant.USER_FOLDER`) - przy wielu replikach
-  wymagaja wspoldzielonego wolumenu lub przeniesienia do object storage.
-- Brak paginacji i sortowania na `GET /list`.
-- Refaktoryzacja w kierunku architektury portow i adapterow (galaz `refactor_ports_and_adapters`).
+- `SecurityConfiguration.corsConfiguration()` hardcodes the allowed origin (`http://localhost:4200/`)
+  and ignores the `cors.*` properties read from the profiles - worth unifying.
+- `cookie.setSecure(true)` is commented out in `TokenServiceImpl` - required before serving over HTTPS.
+- `k8s/configmap.yaml` sets `SPRING_REDIS_PORT` while the application reads `SPRING_DATA_REDIS_PORT`.
+- Avatars are written to the pod's local disk (`FileConstant.USER_FOLDER`) - with multiple replicas
+  this needs a shared volume or a move to object storage.
+- No pagination or sorting on `GET /list`.
+- Refactoring towards a ports-and-adapters architecture (branch `refactor_ports_and_adapters`).
