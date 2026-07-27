@@ -6,6 +6,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Sciezki - liczone wzgledem polozenia skryptu, nie katalogu wywolania
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
+
 # Konfiguracja
 DOCKER_REGISTRY="kacperroot"
 IMAGE_NAME="users-backend"
@@ -43,7 +47,7 @@ fi
 echo ""
 echo -e "${GREEN}🔨 KROK 1: Budowanie aplikacji Maven${NC}"
 echo "================================"
-mvn clean package -DskipTests
+mvn -f "${ROOT_DIR}/backend/pom.xml" clean package -DskipTests
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Błąd podczas budowania aplikacji!${NC}"
     exit 1
@@ -59,7 +63,7 @@ LATEST_IMAGE="${DOCKER_REGISTRY}/${IMAGE_NAME}:latest"
 echo -e "${GREEN}🐳 KROK 2: Budowanie obrazu Docker${NC}"
 echo "================================"
 echo "Tag: ${TAG}"
-docker build -t ${FULL_IMAGE} .
+docker build -t ${FULL_IMAGE} "${ROOT_DIR}/backend"
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Błąd podczas budowania obrazu Docker!${NC}"
     exit 1
@@ -88,22 +92,22 @@ echo "================================"
 kubectl get namespace ${NAMESPACE} &> /dev/null
 if [ $? -ne 0 ]; then
     echo "📦 Tworzenie namespace ${NAMESPACE}..."
-    kubectl apply -f k8s/namespace.yaml
+    kubectl apply -f "${ROOT_DIR}"/k8s/namespace.yaml
 fi
 
 # Deployment konfiguracji
 echo "📝 Applying ConfigMap..."
-kubectl apply -f k8s/configmap.yaml
+kubectl apply -f "${ROOT_DIR}"/k8s/configmap.yaml
 
 echo "🔐 Applying Secrets..."
-kubectl apply -f k8s/secrets.yaml
+kubectl apply -f "${ROOT_DIR}"/k8s/secrets.yaml
 
 # Deployment bazy danych i cache
 echo "🗄️  Deploying PostgreSQL..."
-kubectl apply -f k8s/postgres/postgres-statefulset.yaml
+kubectl apply -f "${ROOT_DIR}"/k8s/postgres/postgres-statefulset.yaml
 
 echo "⚡ Deploying Redis..."
-kubectl apply -f k8s/redis/redis-statefulset.yaml
+kubectl apply -f "${ROOT_DIR}"/k8s/redis/redis-statefulset.yaml
 
 # Czekanie na gotowość baz danych
 echo "⏳ Czekanie na gotowość baz danych..."
@@ -112,29 +116,29 @@ kubectl wait --for=condition=ready pod -l app=redis -n ${NAMESPACE} --timeout=12
 
 # Deployment backendu
 echo "🚀 Deploying Backend..."
-kubectl apply -f k8s/backend/backend-deployment.yaml
+kubectl apply -f "${ROOT_DIR}"/k8s/backend/backend-deployment.yaml
 
 # Jeśli istnieje HPA dla backendu
-if [ -f "k8s/backend/backend-hpa.yaml" ]; then
+if [ -f "${ROOT_DIR}/k8s/backend/backend-hpa.yaml" ]; then
     echo "📊 Applying Backend HPA..."
-    kubectl apply -f k8s/backend/backend-hpa.yaml
+    kubectl apply -f "${ROOT_DIR}"/k8s/backend/backend-hpa.yaml
 fi
 
 # Deployment frontendu (jeśli istnieje)
-if [ -f "k8s/frontend/frontend-deployment.yaml" ]; then
+if [ -f "${ROOT_DIR}/k8s/frontend/frontend-deployment.yaml" ]; then
     echo "🌐 Deploying Frontend..."
-    kubectl apply -f k8s/frontend/frontend-deployment.yaml
+    kubectl apply -f "${ROOT_DIR}"/k8s/frontend/frontend-deployment.yaml
     
-    if [ -f "k8s/frontend/frontend-hpa.yaml" ]; then
+    if [ -f "${ROOT_DIR}/k8s/frontend/frontend-hpa.yaml" ]; then
         echo "📊 Applying Frontend HPA..."
-        kubectl apply -f k8s/frontend/frontend-hpa.yaml
+        kubectl apply -f "${ROOT_DIR}"/k8s/frontend/frontend-hpa.yaml
     fi
 fi
 
 # Ingress
-if [ -f "k8s/ingress.yaml" ]; then
+if [ -f "${ROOT_DIR}/k8s/ingress.yaml" ]; then
     echo "🔀 Applying Ingress..."
-    kubectl apply -f k8s/ingress.yaml
+    kubectl apply -f "${ROOT_DIR}"/k8s/ingress.yaml
 fi
 
 echo -e "${GREEN}✅ Manifesty Kubernetes zastosowane${NC}"

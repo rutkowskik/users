@@ -1,0 +1,14 @@
+version: '3.9'
+
+services:
+  users-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: users-frontend
+    ports:
+      - "80:80"
+    image: kacperroot/users-frontend:latest
+    restart: always
+    environment:
+      - NODE_ENV=production
